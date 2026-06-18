@@ -5,7 +5,7 @@ import { styles } from '../styles/dashboardStyles'
 
 function Topbar({ variant = 'logout' }) {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { session, logout } = useAuth()
 
   function handleClick() {
     if (variant === 'back') {
@@ -19,8 +19,16 @@ function Topbar({ variant = 'logout' }) {
 
   return (
     <header style={styles.topbar}>
-      <div style={styles.brand}>
-        Lumina
+      <div>
+        <div style={styles.brand}>
+          Lumina
+        </div>
+
+        {session?.nome && (
+          <div style={styles.sessionInfo}>
+            {session.nome}
+          </div>
+        )}
       </div>
 
       <button

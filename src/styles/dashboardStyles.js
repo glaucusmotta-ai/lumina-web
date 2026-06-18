@@ -311,6 +311,14 @@ formInput: {
     lineHeight: 1.6,
     color: theme.colors.textSoft,
   },
+
+  sessionInfo: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#9b6b78',
+    fontWeight: 500,
+  },
+
 }
 
 

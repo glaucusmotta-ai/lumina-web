@@ -71,6 +71,55 @@ export const styles = {
     marginTop: '12px',
     fontSize: '15px',
   },
+
+    linkButton: {
+    width: '100%',
+    border: 'none',
+    background: 'transparent',
+    color: theme.colors.textSoft,
+    fontWeight: '600',
+    cursor: 'pointer',
+    marginTop: '18px',
+    fontSize: '14px',
+  },
+
+  helperText: {
+    color: theme.colors.textSoft,
+    fontSize: '14px',
+    lineHeight: '1.5',
+    textAlign: 'center',
+    margin: '0 0 24px',
+  },
+
+  passwordWrapper: {
+  position: 'relative',
+  marginBottom: '16px',
+},
+
+passwordInput: {
+  width: '100%',
+  padding: '14px',
+  paddingRight: '90px',
+  borderRadius: theme.radius.md,
+  border: `1px solid ${theme.colors.border}`,
+  fontSize: '15px',
+  outline: 'none',
+  boxSizing: 'border-box',
+},
+
+passwordToggle: {
+  position: 'absolute',
+  right: '12px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  border: 'none',
+  background: 'transparent',
+  color: theme.colors.textSoft,
+  fontWeight: '600',
+  cursor: 'pointer',
+  fontSize: '13px',
+},
+
 }
 
 

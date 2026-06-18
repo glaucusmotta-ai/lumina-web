@@ -1,23 +1,48 @@
 import { useState } from 'react'
 
+import ForgotPasswordForm from '../components/ForgotPasswordForm'
+import LoginForm from '../components/LoginForm'
+import RegisterForm from '../components/RegisterForm'
 import useAuth from '../hooks/useAuth'
 import { styles } from '../styles/loginStyles'
 
 function LoginScreen() {
-  const { login } = useAuth()
+  const { login, register, recover } = useAuth()
+  const [mode, setMode] = useState('login')
+  const [loading, setLoading] = useState(false)
 
-  const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
-
-  function handleLogin() {
-    if (!email || !senha) {
-      alert('Preencha e-mail e senha.')
-      return
+  async function handleLogin(credentials) {
+    try {
+      setLoading(true)
+      await login(credentials)
+      window.location.reload()
+    } catch (error) {
+      alert(error.message)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    login()
+  async function handleRegister(data) {
+    try {
+      setLoading(true)
+      await register(data)
+      alert('Conta criada com sucesso. Bem-vindo ao Lumina.')
+      window.location.reload()
+    } catch (error) {
+      alert(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-    window.location.reload()
+  function handleRecover(email) {
+    try {
+      recover(email)
+    } catch (error) {
+      alert(error.message)
+      setMode('login')
+    }
   }
 
   return (
@@ -31,35 +56,33 @@ function LoginScreen() {
           serenidade para sua rotina
         </div>
 
-        <input
-          type="email"
-          placeholder="E-mail"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          style={styles.input}
-        />
+        {loading && (
+          <p style={styles.helperText}>
+            Processando...
+          </p>
+        )}
 
-        <input
-          type="password"
-          placeholder="Senha"
-          value={senha}
-          onChange={(event) => setSenha(event.target.value)}
-          style={styles.input}
-        />
+        {mode === 'login' && !loading && (
+          <LoginForm
+            onLogin={handleLogin}
+            onRegister={() => setMode('register')}
+            onForgotPassword={() => setMode('forgot')}
+          />
+        )}
 
-        <button
-          style={styles.button}
-          onClick={handleLogin}
-        >
-          Entrar
-        </button>
+        {mode === 'forgot' && !loading && (
+          <ForgotPasswordForm
+            onRecover={handleRecover}
+            onBack={() => setMode('login')}
+          />
+        )}
 
-        <button
-          style={styles.secondaryButton}
-          onClick={handleLogin}
-        >
-          Criar acesso
-        </button>
+        {mode === 'register' && !loading && (
+          <RegisterForm
+            onRegister={handleRegister}
+            onBack={() => setMode('login')}
+          />
+        )}
       </div>
     </div>
   )

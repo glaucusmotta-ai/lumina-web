@@ -42,13 +42,20 @@ export function createScheduleSession(sessionData) {
 
   const newSession = {
     id: `sessao-${Date.now()}`,
-    status: 'Confirmada',
+    status: SESSION_STATUS.CONFIRMADA,
     ...sessionData,
   }
 
   saveStoredSessions([...sessions, newSession])
 
   return newSession
+}
+
+export const SESSION_STATUS = {
+  CONFIRMADA: 'Confirmada',
+  PENDENTE: 'Pendente',
+  CANCELADA: 'Cancelada',
+  FINALIZADA: 'Finalizada',
 }
 
 

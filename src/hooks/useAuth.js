@@ -1,25 +1,78 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
-const STORAGE_KEY = 'lumina_auth'
+import {
+  getCurrentAccount,
+  loginAccount,
+  logoutAccount,
+  registerAccount,
+} from '../services/api/authApi'
+
+import { getToken } from '../services/api/apiClient'
 
 function useAuth() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem(STORAGE_KEY) === 'true'
-  })
+  const [session, setSession] = useState(null)
+  const [loading, setLoading] = useState(Boolean(getToken()))
 
-  function login() {
-    localStorage.setItem(STORAGE_KEY, 'true')
-    setIsAuthenticated(true)
+  useEffect(() => {
+    async function loadSession() {
+      if (!getToken()) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const account = await getCurrentAccount()
+        setSession(account)
+      } catch {
+        logoutAccount()
+        setSession(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadSession()
+  }, [])
+
+  async function login(credentials) {
+    await loginAccount(credentials)
+
+    const account = await getCurrentAccount()
+    setSession(account)
+
+    return account
+  }
+
+  async function register(data) {
+    await registerAccount(data)
+
+    await loginAccount({
+      email: data.email,
+      senha: data.senha,
+    })
+
+    const account = await getCurrentAccount()
+    setSession(account)
+
+    return account
+  }
+
+  function recover() {
+    throw new Error('Recuperação de senha será integrada ao backend na próxima etapa.')
   }
 
   function logout() {
-    localStorage.removeItem(STORAGE_KEY)
-    setIsAuthenticated(false)
+    logoutAccount()
+    setSession(null)
   }
 
   return {
-    isAuthenticated,
+    session,
+    loading,
+    isAuthenticated: Boolean(session),
     login,
+    register,
+    recover,
     logout,
   }
 }

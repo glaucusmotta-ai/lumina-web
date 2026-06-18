@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import SessionCard from '../components/SessionCard'
+import SessionFormModal from '../components/SessionFormModal'
 import Topbar from '../components/Topbar'
 import { agendaSessions } from '../data/agendaSessions'
+import {
+  hasScheduleConflict,
+  SESSION_STATUS,
+} from '../services/scheduleService'
 import { styles } from '../styles/dashboardStyles'
-import { hasScheduleConflict } from '../services/scheduleService'
+
+
 
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
@@ -14,10 +21,12 @@ const initialForm = {
   horario: '',
   telefone: '',
   email: '',
+  status: SESSION_STATUS.CONFIRMADA,
 }
 
 function AgendaScreen() {
   const [selectedDate, setSelectedDate] = useState(null)
+
   const [sessions, setSessions] = useState(() => {
     const savedSessions = localStorage.getItem('lumina-sessions')
 
@@ -27,6 +36,7 @@ function AgendaScreen() {
 
     return agendaSessions
   })
+
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingSessionId, setEditingSessionId] = useState(null)
   const [form, setForm] = useState(initialForm)
@@ -47,7 +57,11 @@ function AgendaScreen() {
     const daysInMonth = new Date(year, month + 1, 0).getDate()
 
     const emptyDays = Array.from({ length: firstDay }, () => null)
-    const monthDays = Array.from({ length: daysInMonth }, (_, index) => index + 1)
+
+    const monthDays = Array.from(
+      { length: daysInMonth },
+      (_, index) => index + 1,
+    )
 
     return [...emptyDays, ...monthDays]
   }, [])
@@ -77,10 +91,12 @@ function AgendaScreen() {
       return
     }
 
-    if (hasScheduleConflict({
-      date: form.date,
-      horario: form.horario,
-    })) {
+    if (
+      hasScheduleConflict({
+        date: form.date,
+        horario: form.horario,
+      })
+    ) {
       alert('Já existe um agendamento para este dia e horário.')
       return
     }
@@ -93,10 +109,14 @@ function AgendaScreen() {
       horario: form.horario,
       telefone: form.telefone,
       email: form.email,
-      status: 'Confirmada',
+      status: form.status,
     }
 
-    setSessions((currentSessions) => [...currentSessions, newSession])
+    setSessions((currentSessions) => [
+      ...currentSessions,
+      newSession,
+    ])
+
     setForm(initialForm)
     setIsCreateOpen(false)
   }
@@ -119,6 +139,7 @@ function AgendaScreen() {
 
   function handleStartEdit(session) {
     setEditingSessionId(session.id)
+
     setForm({
       cliente: session.cliente,
       servico: session.servico,
@@ -126,7 +147,9 @@ function AgendaScreen() {
       horario: session.horario,
       telefone: session.telefone,
       email: session.email,
+      status: session.status || SESSION_STATUS.CONFIRMADA,
     })
+
     setIsCreateOpen(true)
   }
 
@@ -136,11 +159,13 @@ function AgendaScreen() {
       return
     }
 
-    if (hasScheduleConflict({
-      date: form.date,
-      horario: form.horario,
-      ignoreSessionId: editingSessionId,
-    })) {
+    if (
+      hasScheduleConflict({
+        date: form.date,
+        horario: form.horario,
+        ignoreSessionId: editingSessionId,
+      })
+    ) {
       alert('Já existe um agendamento para este dia e horário.')
       return
     }
@@ -156,6 +181,7 @@ function AgendaScreen() {
               horario: form.horario,
               telefone: form.telefone,
               email: form.email,
+              status: form.status,
             }
           : session,
       ),
@@ -180,6 +206,7 @@ function AgendaScreen() {
 
   function openWhatsApp(session) {
     const message = `Olá, ${session.cliente}! Passando para lembrar da sua sessão de ${session.servico} às ${session.horario}.`
+
     const url = `https://wa.me/${session.telefone}?text=${encodeURIComponent(message)}`
 
     window.open(url, '_blank')
@@ -187,7 +214,9 @@ function AgendaScreen() {
 
   function openEmail(session) {
     const subject = 'Lembrete da sua sessão'
+
     const body = `Olá, ${session.cliente}!\n\nPassando para lembrar da sua sessão de ${session.servico} às ${session.horario}.\n\nAté breve!`
+
     const url = `mailto:${session.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 
     window.location.href = url
@@ -291,141 +320,37 @@ function AgendaScreen() {
               )}
 
               {selectedSessions.map((session) => (
-                <div key={session.id} style={styles.sessionItem}>
-                  <h3 style={styles.sessionClient}>
-                    {session.horario} • {session.cliente}
-                  </h3>
-
-                  <p style={styles.sessionText}>
-                    Serviço: {session.servico}
-                  </p>
-
-                  <p style={styles.sessionText}>
-                    WhatsApp: {session.telefone || 'Não informado'}
-                  </p>
-
-                  <p style={styles.sessionText}>
-                    E-mail: {session.email || 'Não informado'}
-                  </p>
-
-                  <div style={styles.sessionActions}>
-                    <button
-                      type="button"
-                      style={styles.buttonPrimary}
-                      onClick={() => openWhatsApp(session)}
-                    >
-                      WhatsApp
-                    </button>
-
-                    <button
-                      type="button"
-                      style={styles.buttonSecondary}
-                      onClick={() => openEmail(session)}
-                    >
-                      E-mail
-                    </button>
-
-                    <button
-                      type="button"
-                      style={styles.buttonSecondary}
-                      onClick={() => handleStartEdit(session)}
-                    >
-                      Editar
-                    </button>
-
-                    <button
-                      type="button"
-                      style={styles.buttonDanger}
-                      onClick={() => handleDeleteSession(session.id)}
-                    >
-                      Excluir
-                    </button>
-                  </div>
-                </div>
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  onWhatsApp={openWhatsApp}
+                  onEmail={openEmail}
+                  onEdit={handleStartEdit}
+                  onDelete={handleDeleteSession}
+                />
               ))}
+            
             </div>
           </div>
         </section>
       )}
 
       {isCreateOpen && (
-        <section style={styles.popupOverlay}>
-          <div style={styles.popup}>
-            <div style={styles.popupHeader}>
-              <h2 style={styles.popupTitle}>
-                {editingSessionId ? 'Editar agendamento' : 'Novo agendamento'}
-              </h2>
-
-              <button
-                type="button"
-                style={styles.popupClose}
-                onClick={closeCreateModal}
-              >
-                Fechar
-              </button>
-            </div>
-
-            <div style={styles.popupBody}>
-              <div style={styles.formGrid}>
-                <input
-                  style={styles.formInput}
-                  placeholder="Nome do cliente"
-                  value={form.cliente}
-                  onChange={(event) => handleChange('cliente', event.target.value)}
-                />
-
-                <input
-                  style={styles.formInput}
-                  placeholder="Serviço"
-                  value={form.servico}
-                  onChange={(event) => handleChange('servico', event.target.value)}
-                />
-
-                <input
-                  type="date"
-                  style={styles.formInput}
-                  value={form.date}
-                  onChange={(event) => handleChange('date', event.target.value)}
-                />
-
-                <input
-                  type="time"
-                  style={styles.formInput}
-                  value={form.horario}
-                  onChange={(event) => handleChange('horario', event.target.value)}
-                />
-
-                <input
-                  style={styles.formInput}
-                  placeholder="Telefone / WhatsApp"
-                  value={form.telefone}
-                  onChange={(event) => handleChange('telefone', event.target.value)}
-                />
-
-                <input
-                  type="email"
-                  style={styles.formInput}
-                  placeholder="E-mail"
-                  value={form.email}
-                  onChange={(event) => handleChange('email', event.target.value)}
-                />
-              </div>
-
-              <button
-                type="button"
-                style={styles.buttonPrimary}
-                onClick={editingSessionId ? handleUpdateSession : handleCreateSession}
-              >
-                {editingSessionId ? 'Salvar alterações' : 'Salvar sessão'}
-              </button>
-            </div>
-          </div>
-        </section>
+        <SessionFormModal
+          form={form}
+          isEditing={Boolean(editingSessionId)}
+          onChange={handleChange}
+          onClose={closeCreateModal}
+          onSubmit={
+            editingSessionId
+              ? handleUpdateSession
+              : handleCreateSession
+          }
+        />
       )}
     </main>
   )
 }
 
 export default AgendaScreen
-
 
