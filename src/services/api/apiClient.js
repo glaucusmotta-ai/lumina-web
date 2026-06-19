@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://api-lumina.3g-brasil.com'
+const API_BASE_URL = '/api'
 
 const TOKEN_KEY = 'lumina_token'
 
