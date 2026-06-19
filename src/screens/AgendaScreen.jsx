@@ -3,14 +3,15 @@ import { useEffect, useMemo, useState } from 'react'
 import SessionCard from '../components/SessionCard'
 import SessionFormModal from '../components/SessionFormModal'
 import Topbar from '../components/Topbar'
+import Footer from '../components/Footer'
 import { agendaSessions } from '../data/agendaSessions'
+import { getReminderApiLogs } from '../services/api/reminderApi'
+import { createSession, getSessions } from '../services/api/sessionApi'
 import {
-  hasScheduleConflict,
   SESSION_STATUS,
+  saveStoredSessions,
 } from '../services/scheduleService'
 import { styles } from '../styles/dashboardStyles'
-
-
 
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
@@ -24,14 +25,118 @@ const initialForm = {
   status: SESSION_STATUS.CONFIRMADA,
 }
 
+function getStoredSessions() {
+  const savedSessions = localStorage.getItem('lumina-sessions')
+
+  if (!savedSessions) return []
+
+  try {
+    return JSON.parse(savedSessions)
+  } catch {
+    return []
+  }
+}
+
+function getStoredClients() {
+  const savedClients = localStorage.getItem('lumina_clients')
+
+  if (!savedClients) return []
+
+  try {
+    return JSON.parse(savedClients)
+  } catch {
+    return []
+  }
+}
+
+function extractClientSessions(clients) {
+  return clients
+    .filter((client) => client.proximaSessao && client.horarioProximaSessao)
+    .map((client) => ({
+      id: `cliente-${client.id}-${client.proximaSessao}-${client.horarioProximaSessao}`,
+      cliente: client.nome,
+      servico: client.servico || 'Atendimento',
+      date: client.proximaSessao,
+      horario: client.horarioProximaSessao,
+      telefone: client.whatsapp || client.telefone || '',
+      email: client.email || '',
+      status: SESSION_STATUS.CONFIRMADA,
+      origem: 'cadastro',
+    }))
+}
+
+function normalizeSessionFromApi(session) {
+  return {
+    id: session.id,
+    cliente: session.cliente_nome,
+    servico: session.servico,
+    date: session.data,
+    horario: session.horario,
+    telefone: session.cliente_whatsapp || '',
+    email: session.cliente_email || '',
+    status: session.status || SESSION_STATUS.CONFIRMADA,
+  }
+}
+
+function normalizeSessionToApi(form) {
+  return {
+    cliente_nome: form.cliente,
+    cliente_whatsapp: form.telefone || null,
+    cliente_email: form.email || null,
+    servico: form.servico,
+    data: form.date,
+    horario: form.horario,
+    status: form.status,
+  }
+}
+
+function getSessionMergeKey(session) {
+  return [
+    session.date,
+    session.horario,
+    String(session.cliente || '').trim().toLowerCase(),
+  ].join('|')
+}
+
+function mergeSessions(localSessions, apiSessions) {
+  const map = new Map()
+
+  localSessions.forEach((session) => {
+    map.set(getSessionMergeKey(session), session)
+  })
+
+  apiSessions.forEach((session) => {
+    map.set(getSessionMergeKey(session), session)
+  })
+
+  return Array.from(map.values())
+}
+
+function hasConflictInSessions({
+  sessions,
+  date,
+  horario,
+  ignoreSessionId = null,
+}) {
+  if (!date || !horario) return false
+
+  return sessions.some(
+    (session) =>
+      session.date === date &&
+      session.horario === horario &&
+      session.id !== ignoreSessionId,
+  )
+}
+
 function AgendaScreen() {
   const [selectedDate, setSelectedDate] = useState(null)
+  const [reminderLogs, setReminderLogs] = useState([])
 
   const [sessions, setSessions] = useState(() => {
-    const savedSessions = localStorage.getItem('lumina-sessions')
+    const storedSessions = getStoredSessions()
 
-    if (savedSessions) {
-      return JSON.parse(savedSessions)
+    if (storedSessions.length > 0) {
+      return storedSessions
     }
 
     return agendaSessions
@@ -46,10 +151,38 @@ function AgendaScreen() {
   const monthLabel = 'Junho de 2026'
 
   useEffect(() => {
-    localStorage.setItem(
-      'lumina-sessions',
-      JSON.stringify(sessions),
-    )
+    async function loadSessions() {
+      const storedSessions = getStoredSessions()
+      const clientSessions = extractClientSessions(getStoredClients())
+
+      try {
+        const apiSessions = await getSessions()
+        const apiLogs = await getReminderApiLogs()
+        const normalizedApiSessions = apiSessions.map(normalizeSessionFromApi)
+
+        setReminderLogs(apiLogs)
+
+        setSessions(
+          mergeSessions(
+            mergeSessions(storedSessions, clientSessions),
+            normalizedApiSessions,
+          ),
+        )
+      } catch {
+        const mergedLocalSessions = mergeSessions(
+          storedSessions.length > 0 ? storedSessions : agendaSessions,
+          clientSessions,
+        )
+
+        setSessions(mergedLocalSessions)
+      }
+    }
+
+    loadSessions()
+  }, [])
+
+  useEffect(() => {
+    saveStoredSessions(sessions)
   }, [sessions])
 
   const calendarDays = useMemo(() => {
@@ -70,11 +203,19 @@ function AgendaScreen() {
     return `2026-06-${String(day).padStart(2, '0')}`
   }
 
-  function getSessionsByDay(day) {
-    if (!day) return []
+  function getSessionsByDate(date) {
+    if (!date) return []
 
-    return sessions.filter(
-      (session) => session.date === getDateKey(day),
+    return sessions.filter((session) => session.date === date)
+  }
+
+  function hasAutomaticReminderSent(session) {
+    return reminderLogs.some(
+      (log) =>
+        log.session_id === session.id &&
+        log.canal === 'email_cliente' &&
+        log.tipo === 'automatico' &&
+        log.status === 'sent',
     )
   }
 
@@ -85,14 +226,15 @@ function AgendaScreen() {
     }))
   }
 
-  function handleCreateSession() {
+  async function handleCreateSession() {
     if (!form.cliente || !form.servico || !form.date || !form.horario) {
       alert('Preencha cliente, serviço, data e horário.')
       return
     }
 
     if (
-      hasScheduleConflict({
+      hasConflictInSessions({
+        sessions,
         date: form.date,
         horario: form.horario,
       })
@@ -101,7 +243,7 @@ function AgendaScreen() {
       return
     }
 
-    const newSession = {
+    const localSession = {
       id: `sessao-${Date.now()}`,
       cliente: form.cliente,
       servico: form.servico,
@@ -112,28 +254,32 @@ function AgendaScreen() {
       status: form.status,
     }
 
-    setSessions((currentSessions) => [
-      ...currentSessions,
-      newSession,
-    ])
+    try {
+      const apiSession = await createSession(normalizeSessionToApi(form))
+      const normalizedSession = normalizeSessionFromApi(apiSession)
+
+      setSessions((currentSessions) => [
+        ...currentSessions,
+        normalizedSession,
+      ])
+    } catch {
+      setSessions((currentSessions) => [
+        ...currentSessions,
+        localSession,
+      ])
+    }
 
     setForm(initialForm)
     setIsCreateOpen(false)
   }
 
   function handleDeleteSession(sessionId) {
-    const confirmDelete = window.confirm(
-      'Deseja excluir este agendamento?',
-    )
+    const confirmDelete = window.confirm('Deseja excluir este agendamento?')
 
-    if (!confirmDelete) {
-      return
-    }
+    if (!confirmDelete) return
 
     setSessions((currentSessions) =>
-      currentSessions.filter(
-        (session) => session.id !== sessionId,
-      ),
+      currentSessions.filter((session) => session.id !== sessionId),
     )
   }
 
@@ -160,7 +306,8 @@ function AgendaScreen() {
     }
 
     if (
-      hasScheduleConflict({
+      hasConflictInSessions({
+        sessions,
         date: form.date,
         horario: form.horario,
         ignoreSessionId: editingSessionId,
@@ -206,7 +353,6 @@ function AgendaScreen() {
 
   function openWhatsApp(session) {
     const message = `Olá, ${session.cliente}! Passando para lembrar da sua sessão de ${session.servico} às ${session.horario}.`
-
     const url = `https://wa.me/${session.telefone}?text=${encodeURIComponent(message)}`
 
     window.open(url, '_blank')
@@ -214,17 +360,19 @@ function AgendaScreen() {
 
   function openEmail(session) {
     const subject = 'Lembrete da sua sessão'
-
     const body = `Olá, ${session.cliente}!\n\nPassando para lembrar da sua sessão de ${session.servico} às ${session.horario}.\n\nAté breve!`
-
     const url = `mailto:${session.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 
     window.location.href = url
   }
 
-  const selectedSessions = selectedDate
-    ? getSessionsByDay(selectedDate)
-    : []
+  const selectedSessions = getSessionsByDate(selectedDate).sort((a, b) =>
+    a.horario.localeCompare(b.horario),
+  )
+
+  const selectedDay = selectedDate
+    ? Number(selectedDate.split('-')[2])
+    : null
 
   return (
     <main style={styles.page}>
@@ -263,7 +411,8 @@ function AgendaScreen() {
 
         <div style={styles.monthGrid}>
           {calendarDays.map((day, index) => {
-            const daySessions = getSessionsByDay(day)
+            const dateKey = day ? getDateKey(day) : null
+            const daySessions = dateKey ? getSessionsByDate(dateKey) : []
             const hasSessions = daySessions.length > 0
 
             return (
@@ -276,7 +425,7 @@ function AgendaScreen() {
                   ...(day === 16 ? styles.monthDayToday : {}),
                   ...(hasSessions ? styles.monthDayWithSession : {}),
                 }}
-                onClick={() => day && setSelectedDate(day)}
+                onClick={() => dateKey && setSelectedDate(dateKey)}
               >
                 {day && (
                   <>
@@ -300,7 +449,7 @@ function AgendaScreen() {
           <div style={styles.popup}>
             <div style={styles.popupHeader}>
               <h2 style={styles.popupTitle}>
-                Dia {selectedDate} • Junho
+                Dia {selectedDay} • Junho
               </h2>
 
               <button
@@ -322,14 +471,16 @@ function AgendaScreen() {
               {selectedSessions.map((session) => (
                 <SessionCard
                   key={session.id}
-                  session={session}
+                  session={{
+                    ...session,
+                    reminderSent: hasAutomaticReminderSent(session),
+                  }}
                   onWhatsApp={openWhatsApp}
                   onEmail={openEmail}
                   onEdit={handleStartEdit}
                   onDelete={handleDeleteSession}
                 />
               ))}
-            
             </div>
           </div>
         </section>
@@ -348,6 +499,7 @@ function AgendaScreen() {
           }
         />
       )}
+      <Footer />
     </main>
   )
 }

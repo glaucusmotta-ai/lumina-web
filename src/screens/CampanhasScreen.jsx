@@ -1,4 +1,5 @@
 import Topbar from '../components/Topbar'
+import Footer from '../components/Footer'
 import { styles } from '../styles/dashboardStyles'
 
 function CampanhasScreen() {
@@ -19,6 +20,7 @@ function CampanhasScreen() {
           Crie campanhas leves para fortalecer o relacionamento e aumentar retornos.
         </p>
       </section>
+      <Footer />
     </main>
   )
 }

@@ -4,6 +4,7 @@ import ClientForm from '../components/ClientForm'
 import ClientList from '../components/ClientList'
 import SearchBar from '../components/SearchBar'
 import Topbar from '../components/Topbar'
+import Footer from '../components/Footer'
 
 import useClients from '../hooks/useClients'
 
@@ -154,6 +155,7 @@ function CadastroScreen() {
           </>
         )}
       </section>
+      <Footer />
     </main>
   )
 }

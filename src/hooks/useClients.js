@@ -1,32 +1,55 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { initialClients } from '../data/initialClients'
-import {
-  createScheduleSession,
-  hasScheduleConflict,
-} from '../services/scheduleService'
+import { createSession } from '../services/api/sessionApi'
+import { hasScheduleConflict } from '../services/scheduleService'
 
 const CLIENTS_STORAGE_KEY = 'lumina_clients'
 
-function createSessionFromClient(client) {
-  if (!client.proximaSessao || !client.horarioProximaSessao) {
+function clientHasSchedule(client) {
+  return Boolean(client.proximaSessao && client.horarioProximaSessao)
+}
+
+function clientScheduleChanged(originalClient, updatedClient) {
+  return (
+    originalClient?.proximaSessao !== updatedClient.proximaSessao ||
+    originalClient?.horarioProximaSessao !== updatedClient.horarioProximaSessao
+  )
+}
+
+function createSessionPayloadFromClient(client) {
+  return {
+    cliente_nome: client.nome,
+    cliente_whatsapp: client.whatsapp || client.telefone || null,
+    cliente_email: client.email || null,
+    servico: 'Atendimento',
+    data: client.proximaSessao,
+    horario: client.horarioProximaSessao,
+    status: 'Confirmada',
+  }
+}
+
+async function createSessionFromClient(client) {
+  if (!clientHasSchedule(client)) {
     return
   }
 
-  createScheduleSession({
-    date: client.proximaSessao,
-    cliente: client.nome,
-    horario: client.horarioProximaSessao,
-    servico: 'Atendimento',
-    telefone: client.whatsapp || client.telefone,
-    email: client.email,
-  })
+  try {
+    await createSession(createSessionPayloadFromClient(client))
+  } catch {
+    //
+  }
 }
 
 function clientHasScheduleConflict(client) {
+  if (!clientHasSchedule(client)) {
+    return false
+  }
+
   return hasScheduleConflict({
     date: client.proximaSessao,
     horario: client.horarioProximaSessao,
+    ignoreSessionId: `cliente-${client.id}-${client.proximaSessao}-${client.horarioProximaSessao}`,
   })
 }
 
@@ -77,7 +100,14 @@ function useClients() {
   }
 
   function updateClient(updatedClient) {
-    if (clientHasScheduleConflict(updatedClient)) {
+    const originalClient = clients.find(
+      (client) => client.id === updatedClient.id,
+    )
+
+    if (
+      clientScheduleChanged(originalClient, updatedClient) &&
+      clientHasScheduleConflict(updatedClient)
+    ) {
       alert('Já existe um agendamento para este dia e horário.')
       return false
     }
@@ -88,7 +118,9 @@ function useClients() {
       ),
     )
 
-    createSessionFromClient(updatedClient)
+    if (clientScheduleChanged(originalClient, updatedClient)) {
+      createSessionFromClient(updatedClient)
+    }
 
     return true
   }
@@ -112,5 +144,4 @@ function useClients() {
 }
 
 export default useClients
-
 

@@ -1,4 +1,7 @@
+import { useState } from 'react'
+
 import Topbar from '../components/Topbar'
+import Footer from '../components/Footer'
 import { getMetricsData } from '../services/metricsService'
 import { styles } from '../styles/dashboardStyles'
 
@@ -97,6 +100,23 @@ const localStyles = {
     textTransform: 'uppercase',
     letterSpacing: 1.4,
   },
+  chartHeaderButton: {
+    width: '100%',
+    border: 'none',
+    background: 'transparent',
+    padding: 0,
+    textAlign: 'left',
+    cursor: 'pointer',
+  },
+  chartSummary: {
+    margin: '6px 0 0',
+    fontSize: 12,
+    color: '#a58a92',
+  },
+  chartBody: {
+    marginTop: 16,
+    animation: 'fadeMetricChart 260ms ease both',
+  },
   chartRow: {
     display: 'grid',
     gridTemplateColumns: '110px 1fr 32px',
@@ -121,6 +141,7 @@ const localStyles = {
     height: '100%',
     borderRadius: 999,
     background: 'linear-gradient(90deg, #d99aaa, #b96f83)',
+    transition: 'width 720ms ease',
   },
   emptyText: {
     margin: 0,
@@ -150,7 +171,27 @@ function MetricCard({ item, compact = false }) {
   )
 }
 
-function RankingChart({ title, items, valueKey = 'total', labelKey = 'label' }) {
+function getChartSummary(items, valueKey) {
+  if (!items.length) {
+    return 'Sem dados disponíveis'
+  }
+
+  const total = items.reduce(
+    (sum, item) => sum + Number(item[valueKey] || 0),
+    0,
+  )
+
+  return `${items.length} indicadores • Total ${total}`
+}
+
+function ExpandableRankingChart({
+  title,
+  items,
+  valueKey = 'total',
+  labelKey = 'label',
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+
   const maxTotal = Math.max(
     1,
     ...items.map((item) => item[valueKey]),
@@ -158,30 +199,46 @@ function RankingChart({ title, items, valueKey = 'total', labelKey = 'label' }) 
 
   return (
     <article style={localStyles.card}>
-      <h2 style={localStyles.sectionTitle}>{title}</h2>
+      <button
+        type="button"
+        style={localStyles.chartHeaderButton}
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <h2 style={localStyles.sectionTitle}>
+          {title}
+        </h2>
 
-      {items.length === 0 && (
-        <p style={localStyles.emptyText}>
-          Ainda não há dados suficientes para este indicador.
+        <p style={localStyles.chartSummary}>
+          {getChartSummary(items, valueKey)} • {isOpen ? 'Ocultar gráfico' : 'Expandir gráfico'}
         </p>
-      )}
+      </button>
 
-      {items.map((item) => (
-        <div key={item[labelKey]} style={localStyles.chartRow}>
-          <span style={localStyles.chartLabel}>{item[labelKey]}</span>
+      {isOpen && (
+        <div style={localStyles.chartBody}>
+          {items.length === 0 && (
+            <p style={localStyles.emptyText}>
+              Ainda não há dados suficientes para este indicador.
+            </p>
+          )}
 
-          <div style={localStyles.barTrack}>
-            <div
-              style={{
-                ...localStyles.barFill,
-                width: `${(item[valueKey] / maxTotal) * 100}%`,
-              }}
-            />
-          </div>
+          {items.map((item) => (
+            <div key={item[labelKey]} style={localStyles.chartRow}>
+              <span style={localStyles.chartLabel}>{item[labelKey]}</span>
 
-          <strong>{item[valueKey]}</strong>
+              <div style={localStyles.barTrack}>
+                <div
+                  style={{
+                    ...localStyles.barFill,
+                    width: `${(item[valueKey] / maxTotal) * 100}%`,
+                  }}
+                />
+              </div>
+
+              <strong>{item[valueKey]}</strong>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </article>
   )
 }
@@ -238,6 +295,21 @@ function MetricasScreen() {
 
   return (
     <main style={styles.page}>
+      <style>
+        {`
+          @keyframes fadeMetricChart {
+            from {
+              opacity: 0;
+              transform: translateY(8px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
+
       <Topbar variant="back" />
 
       <section style={styles.header}>
@@ -278,7 +350,7 @@ function MetricasScreen() {
 
       <section style={localStyles.chartGrid}>
         {mainCharts.map((chart) => (
-          <RankingChart
+          <ExpandableRankingChart
             key={chart.title}
             title={chart.title}
             items={chart.items}
@@ -294,16 +366,18 @@ function MetricasScreen() {
 
       <section style={localStyles.chartGrid}>
         {detailCharts.map((chart) => (
-          <RankingChart
+          <ExpandableRankingChart
             key={chart.title}
             title={chart.title}
             items={chart.items}
           />
         ))}
       </section>
+      <Footer />
     </main>
   )
 }
 
 export default MetricasScreen
+
 

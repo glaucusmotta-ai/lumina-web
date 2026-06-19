@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import Footer from '../components/Footer'
 import ForgotPasswordForm from '../components/ForgotPasswordForm'
 import LoginForm from '../components/LoginForm'
 import RegisterForm from '../components/RegisterForm'
@@ -46,7 +47,18 @@ function LoginScreen() {
   }
 
   return (
-    <div style={styles.container}>
+    <div
+      style={{
+        ...styles.container,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '24px',
+        boxSizing: 'border-box',
+      }}
+    >
       <div style={styles.card}>
         <div style={styles.logo}>
           Lumina
@@ -84,6 +96,8 @@ function LoginScreen() {
           />
         )}
       </div>
+
+      <Footer />
     </div>
   )
 }

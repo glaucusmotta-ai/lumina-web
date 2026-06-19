@@ -16,20 +16,16 @@ export function removeToken() {
 
 async function request(endpoint, options = {}) {
   const token = getToken()
+  const customHeaders = options.headers || {}
 
-  const response = await fetch(
-    `${API_BASE_URL}${endpoint}`,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && {
-          Authorization: `Bearer ${token}`,
-        }),
-        ...(options.headers || {}),
-      },
-      ...options,
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...customHeaders,
     },
-  )
+  })
 
   if (!response.ok) {
     let errorMessage = 'Erro na comunicação com a API.'
@@ -85,7 +81,5 @@ export const apiClient = {
     })
   },
 }
-
-
 
 

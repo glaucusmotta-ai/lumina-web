@@ -1,5 +1,6 @@
 import DashboardCard from '../components/DashboardCard'
 import Topbar from '../components/Topbar'
+import Footer from '../components/Footer'
 
 import { dashboardModules } from '../data/dashboardModules'
 import { styles } from '../styles/dashboardStyles'
@@ -33,6 +34,7 @@ function DashboardScreen() {
           />
         ))}
       </section>
+      <Footer />
     </main>
   )
 }

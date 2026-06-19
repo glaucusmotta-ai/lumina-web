@@ -28,6 +28,31 @@ class ReminderLog(Base):
         nullable=False
     )
 
+    cliente_nome = Column(
+        String,
+        nullable=True
+    )
+
+    cliente_email = Column(
+        String,
+        nullable=True
+    )
+
+    servico = Column(
+        String,
+        nullable=True
+    )
+
+    data = Column(
+        String,
+        nullable=True
+    )
+
+    horario = Column(
+        String,
+        nullable=True
+    )
+
     canal = Column(
         String,
         nullable=False
@@ -36,6 +61,17 @@ class ReminderLog(Base):
     destinatario = Column(
         String,
         nullable=False
+    )
+
+    tipo = Column(
+        String,
+        nullable=False,
+        default="manual"
+    )
+
+    reminder_offset_minutes = Column(
+        String,
+        nullable=True
     )
 
     status = Column(
@@ -52,6 +88,5 @@ class ReminderLog(Base):
         String,
         nullable=True
     )
-    
     
     

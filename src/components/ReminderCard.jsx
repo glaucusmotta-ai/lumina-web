@@ -1,34 +1,39 @@
 import { reminderStyles as styles } from '../styles/reminderStyles'
 
+function formatDate(date) {
+  if (!date) {
+    return 'Data não informada'
+  }
+
+  return new Date(`${date}T00:00:00`).toLocaleDateString('pt-BR')
+}
+
 function ReminderCard({ reminder, onSend }) {
-  const message = `Olá ${reminder.cliente}, passando para lembrar do seu agendamento hoje às ${reminder.horario}. Qualquer dúvida, estamos à disposição.`
+  const message = `Olá ${reminder.cliente}, passando para lembrar do seu agendamento em ${formatDate(reminder.data)} às ${reminder.horario}. Qualquer dúvida, estamos à disposição.`
 
-  function handleWhatsApp() {
-    const text = encodeURIComponent(message)
-
-    window.open(
-      `https://wa.me/55${reminder.telefone}?text=${text}`,
-      '_blank'
-    )
-
-    onSend({
+  async function handleWhatsApp() {
+    await onSend({
       sessionId: reminder.id,
       channel: 'whatsapp',
       recipient: reminder.telefone,
     })
+
+    const text = encodeURIComponent(message)
+
+    window.open(
+      `https://wa.me/55${reminder.telefone}?text=${text}`,
+      '_blank',
+    )
   }
 
-  function handleEmail() {
-    const subject = encodeURIComponent('Lembrete de agendamento')
-    const body = encodeURIComponent(message)
-
-    window.location.href = `mailto:${reminder.email}?subject=${subject}&body=${body}`
-
-    onSend({
+  async function handleEmail() {
+    await onSend({
       sessionId: reminder.id,
-      channel: 'email',
+      channel: 'email_manual',
       recipient: reminder.email,
     })
+
+    alert('E-mail manual registrado pelo Lumina.')
   }
 
   return (
@@ -38,46 +43,31 @@ function ReminderCard({ reminder, onSend }) {
       </h3>
 
       <p style={styles.info}>
-        Hoje às {reminder.horario}
-      </p>
-
-      <p style={styles.info}>
-        Serviço: {reminder.service}
-      </p>
-
-      <p style={styles.info}>
-        WhatsApp: {reminder.telefone || 'Não informado'}
-      </p>
-
-      <p style={styles.info}>
-        E-mail: {reminder.email || 'Não informado'}
+        Data: {formatDate(reminder.data)} • Horário: {reminder.horario}
       </p>
 
       <div style={styles.actions}>
         <button
+          type="button"
           style={styles.actionButton}
           onClick={handleWhatsApp}
           disabled={!reminder.telefone}
         >
-          WhatsApp
+          Abrir WhatsApp
         </button>
 
         <button
+          type="button"
           style={styles.actionButton}
           onClick={handleEmail}
           disabled={!reminder.email}
         >
-          E-mail
+          E-mail manual
         </button>
-      </div>
-
-      <div style={styles.status}>
-        Origem: Agenda • Status: {reminder.status}
       </div>
     </article>
   )
 }
 
 export default ReminderCard
-
 

@@ -12,17 +12,35 @@ function SessionCard({
     <div style={styles.sessionItem}>
       <div
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 12,
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: 10,
         }}
       >
-        <h3 style={styles.sessionClient}>
+        <h3
+          style={{
+            ...styles.sessionClient,
+            marginBottom: 0,
+            lineHeight: 1.2,
+          }}
+        >
           {session.horario} • {session.cliente}
         </h3>
 
-        <SessionStatusBadge status={session.status} />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            flexWrap: 'wrap',
+          }}
+        >
+          <SessionStatusBadge status={session.status} />
+
+          {session.reminderSent && (
+            <SessionStatusBadge status="LEMBRETE_ENVIADO" />
+          )}
+        </div>
       </div>
 
       <p style={styles.sessionText}>
@@ -75,4 +93,5 @@ function SessionCard({
 }
 
 export default SessionCard
+
 

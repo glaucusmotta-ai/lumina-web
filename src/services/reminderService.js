@@ -30,7 +30,12 @@ export function getTodayReminders() {
     .filter((session) => session.date === today)
     .map((session) => ({
       id: session.id,
-      cliente: session.clientName || session.nome || 'Cliente',
+      cliente:
+        session.cliente ||
+        session.cliente_nome ||
+        session.clientName ||
+        session.nome ||
+        'Cliente',
       telefone: session.phone || session.telefone || '',
       email: session.email || '',
       data: session.date,
