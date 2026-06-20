@@ -1,14 +1,30 @@
 export async function onRequest(context) {
-  const url = new URL(context.request.url)
+  const request = context.request
+  const url = new URL(request.url)
 
-  const backendUrl = new URL(url.pathname.replace(/^\/api/, ''), 'https://api-lumina.3g-brasil.com')
-  backendUrl.search = url.search
+  const path = url.pathname.replace(/^\/api/, '')
 
-  return fetch(backendUrl.toString(), {
-    method: context.request.method,
-    headers: context.request.headers,
-    body: context.request.body,
-  })
+  const backendUrl =
+    `https://api-lumina.3g-brasil.com${path}${url.search}`
+
+  const headers = new Headers(request.headers)
+
+  headers.set('host', 'api-lumina.3g-brasil.com')
+
+  const init = {
+    method: request.method,
+    headers,
+    redirect: 'follow',
+  }
+
+  if (
+    request.method !== 'GET' &&
+    request.method !== 'HEAD'
+  ) {
+    init.body = await request.arrayBuffer()
+  }
+
+  return fetch(backendUrl, init)
 }
 
 
