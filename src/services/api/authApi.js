@@ -21,7 +21,7 @@ export async function loginAccount(credentials) {
   formData.append('password', credentials.senha)
 
   const response = await fetch(
-    'http://127.0.0.1:8000/auth/login',
+    '/api/auth/login',
     {
       method: 'POST',
       headers: {
