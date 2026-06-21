@@ -4,13 +4,9 @@ import SessionCard from '../components/SessionCard'
 import SessionFormModal from '../components/SessionFormModal'
 import Topbar from '../components/Topbar'
 import Footer from '../components/Footer'
-import { agendaSessions } from '../data/agendaSessions'
 import { getReminderApiLogs } from '../services/api/reminderApi'
 import { createSession, getSessions } from '../services/api/sessionApi'
-import {
-  SESSION_STATUS,
-  saveStoredSessions,
-} from '../services/scheduleService'
+import { SESSION_STATUS } from '../services/scheduleService'
 import { styles } from '../styles/dashboardStyles'
 
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
@@ -23,46 +19,6 @@ const initialForm = {
   telefone: '',
   email: '',
   status: SESSION_STATUS.CONFIRMADA,
-}
-
-function getStoredSessions() {
-  const savedSessions = localStorage.getItem('lumina-sessions')
-
-  if (!savedSessions) return []
-
-  try {
-    return JSON.parse(savedSessions)
-  } catch {
-    return []
-  }
-}
-
-function getStoredClients() {
-  const savedClients = localStorage.getItem('lumina_clients')
-
-  if (!savedClients) return []
-
-  try {
-    return JSON.parse(savedClients)
-  } catch {
-    return []
-  }
-}
-
-function extractClientSessions(clients) {
-  return clients
-    .filter((client) => client.proximaSessao && client.horarioProximaSessao)
-    .map((client) => ({
-      id: `cliente-${client.id}-${client.proximaSessao}-${client.horarioProximaSessao}`,
-      cliente: client.nome,
-      servico: client.servico || 'Atendimento',
-      date: client.proximaSessao,
-      horario: client.horarioProximaSessao,
-      telefone: client.whatsapp || client.telefone || '',
-      email: client.email || '',
-      status: SESSION_STATUS.CONFIRMADA,
-      origem: 'cadastro',
-    }))
 }
 
 function normalizeSessionFromApi(session) {
@@ -90,28 +46,6 @@ function normalizeSessionToApi(form) {
   }
 }
 
-function getSessionMergeKey(session) {
-  return [
-    session.date,
-    session.horario,
-    String(session.cliente || '').trim().toLowerCase(),
-  ].join('|')
-}
-
-function mergeSessions(localSessions, apiSessions) {
-  const map = new Map()
-
-  localSessions.forEach((session) => {
-    map.set(getSessionMergeKey(session), session)
-  })
-
-  apiSessions.forEach((session) => {
-    map.set(getSessionMergeKey(session), session)
-  })
-
-  return Array.from(map.values())
-}
-
 function hasConflictInSessions({
   sessions,
   date,
@@ -131,17 +65,7 @@ function hasConflictInSessions({
 function AgendaScreen() {
   const [selectedDate, setSelectedDate] = useState(null)
   const [reminderLogs, setReminderLogs] = useState([])
-
-  const [sessions, setSessions] = useState(() => {
-    const storedSessions = getStoredSessions()
-
-    if (storedSessions.length > 0) {
-      return storedSessions
-    }
-
-    return agendaSessions
-  })
-
+  const [sessions, setSessions] = useState([])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingSessionId, setEditingSessionId] = useState(null)
   const [form, setForm] = useState(initialForm)
@@ -151,39 +75,27 @@ function AgendaScreen() {
   const monthLabel = 'Junho de 2026'
 
   useEffect(() => {
-    async function loadSessions() {
-      const storedSessions = getStoredSessions()
-      const clientSessions = extractClientSessions(getStoredClients())
-
+    async function loadAgendaData() {
       try {
         const apiSessions = await getSessions()
-        const apiLogs = await getReminderApiLogs()
-        const normalizedApiSessions = apiSessions.map(normalizeSessionFromApi)
 
-        setReminderLogs(apiLogs)
+        setSessions(apiSessions.map(normalizeSessionFromApi))
 
-        setSessions(
-          mergeSessions(
-            mergeSessions(storedSessions, clientSessions),
-            normalizedApiSessions,
-          ),
-        )
-      } catch {
-        const mergedLocalSessions = mergeSessions(
-          storedSessions.length > 0 ? storedSessions : agendaSessions,
-          clientSessions,
-        )
-
-        setSessions(mergedLocalSessions)
+        try {
+          const apiLogs = await getReminderApiLogs()
+          setReminderLogs(apiLogs)
+        } catch {
+          setReminderLogs([])
+        }
+      } catch (error) {
+        alert(error.message)
+        setSessions([])
+        setReminderLogs([])
       }
     }
 
-    loadSessions()
+    loadAgendaData()
   }, [])
-
-  useEffect(() => {
-    saveStoredSessions(sessions)
-  }, [sessions])
 
   const calendarDays = useMemo(() => {
     const firstDay = new Date(year, month, 1).getDay()
@@ -243,17 +155,6 @@ function AgendaScreen() {
       return
     }
 
-    const localSession = {
-      id: `sessao-${Date.now()}`,
-      cliente: form.cliente,
-      servico: form.servico,
-      date: form.date,
-      horario: form.horario,
-      telefone: form.telefone,
-      email: form.email,
-      status: form.status,
-    }
-
     try {
       const apiSession = await createSession(normalizeSessionToApi(form))
       const normalizedSession = normalizeSessionFromApi(apiSession)
@@ -262,81 +163,24 @@ function AgendaScreen() {
         ...currentSessions,
         normalizedSession,
       ])
-    } catch {
-      setSessions((currentSessions) => [
-        ...currentSessions,
-        localSession,
-      ])
+
+      setForm(initialForm)
+      setIsCreateOpen(false)
+    } catch (error) {
+      alert(error.message)
     }
-
-    setForm(initialForm)
-    setIsCreateOpen(false)
   }
 
-  function handleDeleteSession(sessionId) {
-    const confirmDelete = window.confirm('Deseja excluir este agendamento?')
-
-    if (!confirmDelete) return
-
-    setSessions((currentSessions) =>
-      currentSessions.filter((session) => session.id !== sessionId),
-    )
+  function handleDeleteSession() {
+    alert('Exclusão de agendamento será habilitada no backend na próxima etapa.')
   }
 
-  function handleStartEdit(session) {
-    setEditingSessionId(session.id)
-
-    setForm({
-      cliente: session.cliente,
-      servico: session.servico,
-      date: session.date,
-      horario: session.horario,
-      telefone: session.telefone,
-      email: session.email,
-      status: session.status || SESSION_STATUS.CONFIRMADA,
-    })
-
-    setIsCreateOpen(true)
+  function handleStartEdit() {
+    alert('Edição de agendamento será habilitada no backend na próxima etapa.')
   }
 
   function handleUpdateSession() {
-    if (!form.cliente || !form.servico || !form.date || !form.horario) {
-      alert('Preencha cliente, serviço, data e horário.')
-      return
-    }
-
-    if (
-      hasConflictInSessions({
-        sessions,
-        date: form.date,
-        horario: form.horario,
-        ignoreSessionId: editingSessionId,
-      })
-    ) {
-      alert('Já existe um agendamento para este dia e horário.')
-      return
-    }
-
-    setSessions((currentSessions) =>
-      currentSessions.map((session) =>
-        session.id === editingSessionId
-          ? {
-              ...session,
-              cliente: form.cliente,
-              servico: form.servico,
-              date: form.date,
-              horario: form.horario,
-              telefone: form.telefone,
-              email: form.email,
-              status: form.status,
-            }
-          : session,
-      ),
-    )
-
-    setEditingSessionId(null)
-    setForm(initialForm)
-    setIsCreateOpen(false)
+    alert('Edição de agendamento será habilitada no backend na próxima etapa.')
   }
 
   function openCreateModal() {
@@ -499,6 +343,7 @@ function AgendaScreen() {
           }
         />
       )}
+
       <Footer />
     </main>
   )

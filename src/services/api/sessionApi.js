@@ -7,3 +7,4 @@ export function getSessions() {
 export function createSession(sessionData) {
   return apiClient.post('/sessions', sessionData)
 }
+

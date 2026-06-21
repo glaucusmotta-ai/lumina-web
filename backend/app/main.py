@@ -7,6 +7,7 @@ from app.routes.session_routes import router as session_router
 from app.routes.reminder_routes import router as reminder_router
 from app.jobs.scheduler import start_scheduler
 from fastapi.middleware.cors import CORSMiddleware
+from app.routes.client_routes import router as client_router
 
 app = FastAPI(
     title=settings.APP_NAME
@@ -40,6 +41,7 @@ def health_check():
 app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(reminder_router)
+app.include_router(client_router)
 
     
     
