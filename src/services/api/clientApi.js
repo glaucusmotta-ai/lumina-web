@@ -1,17 +1,21 @@
 import { apiClient } from './apiClient'
 
+function unwrapResponse(response) {
+  if (response?.data) {
+    return response.data
+  }
+
+  return response
+}
+
 export async function getClients() {
   const response = await apiClient.get('/clients')
-  return response.data
+  return unwrapResponse(response)
 }
 
 export async function createClient(clientData) {
-  const response = await apiClient.post(
-    '/clients',
-    clientData,
-  )
-
-  return response.data
+  const response = await apiClient.post('/clients', clientData)
+  return unwrapResponse(response)
 }
 
 export async function updateClient(clientId, clientData) {
@@ -20,7 +24,7 @@ export async function updateClient(clientId, clientData) {
     clientData,
   )
 
-  return response.data
+  return unwrapResponse(response)
 }
 
 export async function deleteClient(clientId) {
@@ -28,7 +32,6 @@ export async function deleteClient(clientId) {
     `/clients/${clientId}`,
   )
 
-  return response.data
+  return unwrapResponse(response)
 }
-
 
