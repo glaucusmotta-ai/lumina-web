@@ -20,7 +20,9 @@ function SessionFormModal({
       <div style={styles.popup}>
         <div style={styles.popupHeader}>
           <h2 style={styles.popupTitle}>
-            {isEditing ? 'Editar agendamento' : 'Novo agendamento'}
+            {isEditing
+              ? 'Editar agendamento'
+              : 'Novo agendamento'}
           </h2>
 
           <button
@@ -37,48 +39,69 @@ function SessionFormModal({
             <input
               style={styles.formInput}
               placeholder="Nome do cliente"
-              value={form.cliente}
+              value={form.cliente || ''}
               onChange={(event) =>
-                onChange('cliente', event.target.value)
+                onChange(
+                  'cliente',
+                  event.target.value,
+                )
               }
             />
 
             <input
               style={styles.formInput}
               placeholder="Serviço"
-              value={form.servico}
+              value={form.servico || ''}
               onChange={(event) =>
-                onChange('servico', event.target.value)
+                onChange(
+                  'servico',
+                  event.target.value,
+                )
               }
             />
 
             <input
               type="date"
               style={styles.formInput}
-              value={form.date}
+              value={form.date || ''}
               onChange={(event) =>
-                onChange('date', event.target.value)
+                onChange(
+                  'date',
+                  event.target.value,
+                )
               }
             />
 
             <input
               type="time"
               style={styles.formInput}
-              value={form.horario}
+              value={form.horario || ''}
               onChange={(event) =>
-                onChange('horario', event.target.value)
+                onChange(
+                  'horario',
+                  event.target.value,
+                )
               }
             />
 
             <select
               style={styles.formInput}
-              value={form.status}
+              value={
+                form.status ||
+                SESSION_STATUS.CONFIRMADA
+              }
               onChange={(event) =>
-                onChange('status', event.target.value)
+                onChange(
+                  'status',
+                  event.target.value,
+                )
               }
             >
               {statusOptions.map((status) => (
-                <option key={status} value={status}>
+                <option
+                  key={status}
+                  value={status}
+                >
                   {status}
                 </option>
               ))}
@@ -87,9 +110,12 @@ function SessionFormModal({
             <input
               style={styles.formInput}
               placeholder="Telefone / WhatsApp"
-              value={form.telefone}
+              value={form.telefone || ''}
               onChange={(event) =>
-                onChange('telefone', event.target.value)
+                onChange(
+                  'telefone',
+                  event.target.value,
+                )
               }
             />
 
@@ -97,9 +123,12 @@ function SessionFormModal({
               type="email"
               style={styles.formInput}
               placeholder="E-mail"
-              value={form.email}
+              value={form.email || ''}
               onChange={(event) =>
-                onChange('email', event.target.value)
+                onChange(
+                  'email',
+                  event.target.value,
+                )
               }
             />
           </div>
@@ -109,7 +138,9 @@ function SessionFormModal({
             style={styles.buttonPrimary}
             onClick={onSubmit}
           >
-            {isEditing ? 'Salvar alterações' : 'Salvar sessão'}
+            {isEditing
+              ? 'Salvar alterações'
+              : 'Salvar sessão'}
           </button>
         </div>
       </div>
@@ -118,4 +149,5 @@ function SessionFormModal({
 }
 
 export default SessionFormModal
+
 

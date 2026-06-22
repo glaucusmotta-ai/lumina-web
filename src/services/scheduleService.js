@@ -15,10 +15,12 @@ export function hasScheduleConflictInSessions({
     return false
   }
 
-  return sessions.some((session) =>
-    session.date === date &&
-    session.horario === horario &&
-    session.id !== ignoreSessionId,
+  return sessions.some(
+    (session) =>
+      session.date === date &&
+      session.horario === horario &&
+      session.id !== ignoreSessionId,
   )
 }
+
 

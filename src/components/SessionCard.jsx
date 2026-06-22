@@ -35,10 +35,14 @@ function SessionCard({
             flexWrap: 'wrap',
           }}
         >
-          <SessionStatusBadge status={session.status} />
+          <SessionStatusBadge
+            status={session.status}
+          />
 
           {session.reminderSent && (
-            <SessionStatusBadge status="LEMBRETE_ENVIADO" />
+            <SessionStatusBadge
+              status="LEMBRETE_ENVIADO"
+            />
           )}
         </div>
       </div>
@@ -48,11 +52,13 @@ function SessionCard({
       </p>
 
       <p style={styles.sessionText}>
-        WhatsApp: {session.telefone || 'Não informado'}
+        WhatsApp:{' '}
+        {session.telefone || 'Não informado'}
       </p>
 
       <p style={styles.sessionText}>
-        E-mail: {session.email || 'Não informado'}
+        E-mail:{' '}
+        {session.email || 'Não informado'}
       </p>
 
       <div style={styles.sessionActions}>
@@ -60,6 +66,7 @@ function SessionCard({
           type="button"
           style={styles.buttonPrimary}
           onClick={() => onWhatsApp(session)}
+          disabled={!session.telefone}
         >
           WhatsApp
         </button>
@@ -68,6 +75,7 @@ function SessionCard({
           type="button"
           style={styles.buttonSecondary}
           onClick={() => onEmail(session)}
+          disabled={!session.email}
         >
           E-mail
         </button>

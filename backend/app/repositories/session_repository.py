@@ -37,16 +37,45 @@ def list_sessions_by_user(
         SessionModel.data,
         SessionModel.horario
     ).all()
-    
+
+
+def get_session_by_id_and_user(
+    db: Session,
+    session_id: str,
+    user_id: str
+):
+    return db.query(SessionModel).filter(
+        SessionModel.id == session_id,
+        SessionModel.user_id == user_id
+    ).first()
+
+
+def update_session(
+    db: Session,
+    session: SessionModel,
+    session_data
+):
+    update_data = session_data.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+        setattr(session, field, value)
+
+    db.commit()
+    db.refresh(session)
+
+    return session
+
+
 def delete_session_by_id_and_user(
     db: Session,
     session_id: str,
     user_id: str
 ):
-    session = db.query(SessionModel).filter(
-        SessionModel.id == session_id,
-        SessionModel.user_id == user_id
-    ).first()
+    session = get_session_by_id_and_user(
+        db=db,
+        session_id=session_id,
+        user_id=user_id
+    )
 
     if not session:
         return False
@@ -57,4 +86,3 @@ def delete_session_by_id_and_user(
     return True
 
 
-    

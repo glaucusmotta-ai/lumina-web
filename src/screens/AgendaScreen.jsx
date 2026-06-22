@@ -4,15 +4,18 @@ import SessionCard from '../components/SessionCard'
 import SessionFormModal from '../components/SessionFormModal'
 import Topbar from '../components/Topbar'
 import Footer from '../components/Footer'
+
 import { getReminderApiLogs } from '../services/api/reminderApi'
-import { SESSION_STATUS } from '../services/scheduleService'
-import { styles } from '../styles/dashboardStyles'
 
 import {
   createSession,
   deleteSession,
   getSessions,
+  updateSession,
 } from '../services/api/sessionApi'
+
+import { SESSION_STATUS } from '../services/scheduleService'
+import { styles } from '../styles/dashboardStyles'
 
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
@@ -57,7 +60,9 @@ function hasConflictInSessions({
   horario,
   ignoreSessionId = null,
 }) {
-  if (!date || !horario) return false
+  if (!date || !horario) {
+    return false
+  }
 
   return sessions.some(
     (session) =>
@@ -106,7 +111,10 @@ function AgendaScreen() {
     const firstDay = new Date(year, month, 1).getDay()
     const daysInMonth = new Date(year, month + 1, 0).getDate()
 
-    const emptyDays = Array.from({ length: firstDay }, () => null)
+    const emptyDays = Array.from(
+      { length: firstDay },
+      () => null,
+    )
 
     const monthDays = Array.from(
       { length: daysInMonth },
@@ -121,9 +129,13 @@ function AgendaScreen() {
   }
 
   function getSessionsByDate(date) {
-    if (!date) return []
+    if (!date) {
+      return []
+    }
 
-    return sessions.filter((session) => session.date === date)
+    return sessions.filter(
+      (session) => session.date === date,
+    )
   }
 
   function hasAutomaticReminderSent(session) {
@@ -144,8 +156,16 @@ function AgendaScreen() {
   }
 
   async function handleCreateSession() {
-    if (!form.cliente || !form.servico || !form.date || !form.horario) {
-      alert('Preencha cliente, serviço, data e horário.')
+    if (
+      !form.cliente ||
+      !form.servico ||
+      !form.date ||
+      !form.horario
+    ) {
+      alert(
+        'Preencha cliente, serviço, data e horário.',
+      )
+
       return
     }
 
@@ -156,13 +176,20 @@ function AgendaScreen() {
         horario: form.horario,
       })
     ) {
-      alert('Já existe um agendamento para este dia e horário.')
+      alert(
+        'Já existe um agendamento para este dia e horário.',
+      )
+
       return
     }
 
     try {
-      const apiSession = await createSession(normalizeSessionToApi(form))
-      const normalizedSession = normalizeSessionFromApi(apiSession)
+      const apiSession = await createSession(
+        normalizeSessionToApi(form),
+      )
+
+      const normalizedSession =
+        normalizeSessionFromApi(apiSession)
 
       setSessions((currentSessions) => [
         ...currentSessions,
@@ -170,42 +197,107 @@ function AgendaScreen() {
       ])
 
       setForm(initialForm)
+      setEditingSessionId(null)
       setIsCreateOpen(false)
     } catch (error) {
       alert(error.message)
     }
   }
 
-async function handleDeleteSession(sessionId) {
-  const confirmed = window.confirm(
-    'Deseja realmente excluir este agendamento?',
-  )
+  async function handleUpdateSession() {
+    if (
+      !form.cliente ||
+      !form.servico ||
+      !form.date ||
+      !form.horario
+    ) {
+      alert(
+        'Preencha cliente, serviço, data e horário.',
+      )
 
-  if (!confirmed) {
-    return
+      return
+    }
+
+    if (
+      hasConflictInSessions({
+        sessions,
+        date: form.date,
+        horario: form.horario,
+        ignoreSessionId: editingSessionId,
+      })
+    ) {
+      alert(
+        'Já existe um agendamento para este dia e horário.',
+      )
+
+      return
+    }
+
+    try {
+      const apiSession = await updateSession(
+        editingSessionId,
+        normalizeSessionToApi(form),
+      )
+
+      const normalizedSession =
+        normalizeSessionFromApi(apiSession)
+
+      setSessions((currentSessions) =>
+        currentSessions.map((session) =>
+          session.id === editingSessionId
+            ? normalizedSession
+            : session,
+        ),
+      )
+
+      setForm(initialForm)
+      setEditingSessionId(null)
+      setIsCreateOpen(false)
+    } catch (error) {
+      alert(error.message)
+    }
   }
 
-  try {
-    await deleteSession(sessionId)
-
-    setSessions((currentSessions) =>
-      currentSessions.filter(
-        (session) => session.id !== sessionId,
-      ),
+  async function handleDeleteSession(sessionId) {
+    const confirmed = window.confirm(
+      'Deseja realmente excluir este agendamento?',
     )
 
-    setSelectedDate(null)
-  } catch (error) {
-    alert(error.message)
-  }
-}
+    if (!confirmed) {
+      return
+    }
 
-  function handleStartEdit() {
-    alert('Edição de agendamento será habilitada no backend na próxima etapa.')
+    try {
+      await deleteSession(sessionId)
+
+      setSessions((currentSessions) =>
+        currentSessions.filter(
+          (session) => session.id !== sessionId,
+        ),
+      )
+
+      setSelectedDate(null)
+    } catch (error) {
+      alert(error.message)
+    }
   }
 
-  function handleUpdateSession() {
-    alert('Edição de agendamento será habilitada no backend na próxima etapa.')
+  function handleStartEdit(session) {
+    setEditingSessionId(session.id)
+
+    setForm({
+      cliente: session.cliente || '',
+      servico: session.servico || '',
+      date: session.date || '',
+      horario: session.horario || '',
+      telefone: session.telefone || '',
+      email: session.email || '',
+      status:
+        session.status ||
+        SESSION_STATUS.CONFIRMADA,
+    })
+
+    setIsCreateOpen(true)
   }
 
   function openCreateModal() {
@@ -221,21 +313,38 @@ async function handleDeleteSession(sessionId) {
   }
 
   function openWhatsApp(session) {
-    const message = `Olá, ${session.cliente}! Passando para lembrar da sua sessão de ${session.servico} às ${session.horario}.`
-    const url = `https://wa.me/${session.telefone}?text=${encodeURIComponent(message)}`
+    const message =
+      `Olá, ${session.cliente}! ` +
+      `Passando para lembrar da sua sessão ` +
+      `de ${session.servico} às ${session.horario}.`
+
+    const url =
+      `https://wa.me/${session.telefone}` +
+      `?text=${encodeURIComponent(message)}`
 
     window.open(url, '_blank')
   }
 
   function openEmail(session) {
     const subject = 'Lembrete da sua sessão'
-    const body = `Olá, ${session.cliente}!\n\nPassando para lembrar da sua sessão de ${session.servico} às ${session.horario}.\n\nAté breve!`
-    const url = `mailto:${session.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+
+    const body =
+      `Olá, ${session.cliente}!\n\n` +
+      `Passando para lembrar da sua sessão ` +
+      `de ${session.servico} às ${session.horario}.\n\n` +
+      'Até breve!'
+
+    const url =
+      `mailto:${session.email}` +
+      `?subject=${encodeURIComponent(subject)}` +
+      `&body=${encodeURIComponent(body)}`
 
     window.location.href = url
   }
 
-  const selectedSessions = getSessionsByDate(selectedDate).sort((a, b) =>
+  const selectedSessions = getSessionsByDate(
+    selectedDate,
+  ).sort((a, b) =>
     a.horario.localeCompare(b.horario),
   )
 
@@ -248,12 +357,17 @@ async function handleDeleteSession(sessionId) {
       <Topbar variant="back" />
 
       <section style={styles.header}>
-        <p style={styles.kicker}>Agenda</p>
+        <p style={styles.kicker}>
+          Agenda
+        </p>
 
-        <h1 style={styles.title}>Agenda mensal</h1>
+        <h1 style={styles.title}>
+          Agenda mensal
+        </h1>
 
         <p style={styles.subtitle}>
-          Clique em um dia para visualizar sessões, horários e contatos.
+          Clique em um dia para visualizar
+          sessões, horários e contatos.
         </p>
 
         <button
@@ -267,12 +381,17 @@ async function handleDeleteSession(sessionId) {
 
       <section style={styles.calendarCard}>
         <div style={styles.calendarHeader}>
-          <h2 style={styles.calendarTitle}>{monthLabel}</h2>
+          <h2 style={styles.calendarTitle}>
+            {monthLabel}
+          </h2>
         </div>
 
         <div style={styles.weekGrid}>
           {weekDays.map((day, index) => (
-            <div key={`${day}-${index}`} style={styles.weekDay}>
+            <div
+              key={`${day}-${index}`}
+              style={styles.weekDay}
+            >
               {day}
             </div>
           ))}
@@ -280,9 +399,16 @@ async function handleDeleteSession(sessionId) {
 
         <div style={styles.monthGrid}>
           {calendarDays.map((day, index) => {
-            const dateKey = day ? getDateKey(day) : null
-            const daySessions = dateKey ? getSessionsByDate(dateKey) : []
-            const hasSessions = daySessions.length > 0
+            const dateKey = day
+              ? getDateKey(day)
+              : null
+
+            const daySessions = dateKey
+              ? getSessionsByDate(dateKey)
+              : []
+
+            const hasSessions =
+              daySessions.length > 0
 
             return (
               <button
@@ -291,17 +417,26 @@ async function handleDeleteSession(sessionId) {
                 disabled={!day}
                 style={{
                   ...styles.monthDay,
-                  ...(day === 16 ? styles.monthDayToday : {}),
-                  ...(hasSessions ? styles.monthDayWithSession : {}),
+                  ...(day === 16
+                    ? styles.monthDayToday
+                    : {}),
+                  ...(hasSessions
+                    ? styles.monthDayWithSession
+                    : {}),
                 }}
-                onClick={() => dateKey && setSelectedDate(dateKey)}
+                onClick={() =>
+                  dateKey &&
+                  setSelectedDate(dateKey)
+                }
               >
                 {day && (
                   <>
                     <span>{day}</span>
 
                     {hasSessions && (
-                      <small style={styles.dayBadge}>
+                      <small
+                        style={styles.dayBadge}
+                      >
                         {daySessions.length}
                       </small>
                     )}
@@ -324,7 +459,9 @@ async function handleDeleteSession(sessionId) {
               <button
                 type="button"
                 style={styles.popupClose}
-                onClick={() => setSelectedDate(null)}
+                onClick={() =>
+                  setSelectedDate(null)
+                }
               >
                 Fechar
               </button>
@@ -332,24 +469,40 @@ async function handleDeleteSession(sessionId) {
 
             <div style={styles.popupBody}>
               {selectedSessions.length === 0 && (
-                <p style={styles.cardDescription}>
-                  Nenhum agendamento neste dia.
+                <p
+                  style={
+                    styles.cardDescription
+                  }
+                >
+                  Nenhum agendamento neste
+                  dia.
                 </p>
               )}
 
-              {selectedSessions.map((session) => (
-                <SessionCard
-                  key={session.id}
-                  session={{
-                    ...session,
-                    reminderSent: hasAutomaticReminderSent(session),
-                  }}
-                  onWhatsApp={openWhatsApp}
-                  onEmail={openEmail}
-                  onEdit={handleStartEdit}
-                  onDelete={handleDeleteSession}
-                />
-              ))}
+              {selectedSessions.map(
+                (session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={{
+                      ...session,
+                      reminderSent:
+                        hasAutomaticReminderSent(
+                          session,
+                        ),
+                    }}
+                    onWhatsApp={
+                      openWhatsApp
+                    }
+                    onEmail={openEmail}
+                    onEdit={
+                      handleStartEdit
+                    }
+                    onDelete={
+                      handleDeleteSession
+                    }
+                  />
+                ),
+              )}
             </div>
           </div>
         </section>
@@ -358,7 +511,9 @@ async function handleDeleteSession(sessionId) {
       {isCreateOpen && (
         <SessionFormModal
           form={form}
-          isEditing={Boolean(editingSessionId)}
+          isEditing={Boolean(
+            editingSessionId,
+          )}
           onChange={handleChange}
           onClose={closeCreateModal}
           onSubmit={
