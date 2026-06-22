@@ -59,6 +59,21 @@ function normalizeClient(client) {
   }
 }
 
+function normalizeClientList(clients) {
+  const safeClients = Array.isArray(clients)
+    ? clients
+    : []
+
+  return Array.from(
+    new Map(
+      safeClients.map((client) => [
+        client.id,
+        normalizeClient(client),
+      ]),
+    ).values(),
+  )
+}
+
 function normalizeApiList(payload, label) {
   console.log(`[WATCHDOG][${label}] payload bruto:`, payload)
   console.log(`[WATCHDOG][${label}] Array.isArray:`, Array.isArray(payload))
@@ -149,7 +164,10 @@ function useClients() {
           'getClients',
         )
 
-        setClients(safeClients.map(normalizeClient))
+        const uniqueClients =
+          normalizeClientList(safeClients)
+
+        setClients(uniqueClients)
       } catch (error) {
         console.error('[WATCHDOG][loadClients] erro:', error)
         alert(error.message)
@@ -214,14 +232,13 @@ function useClients() {
       await createSessionFromClient(client)
 
       setClients((currentClients) => {
-        const safeCurrentClients = Array.isArray(currentClients)
-          ? currentClients
-          : []
+        const safeCurrentClients =
+          normalizeClientList(currentClients)
 
-        return [
+        return normalizeClientList([
           normalizedClient,
           ...safeCurrentClients,
-        ]
+        ])
       })
 
       return true
@@ -244,7 +261,11 @@ function useClients() {
         hasConflict,
       )
 
-      const currentClient = clients.find(
+      const safeClients = Array.isArray(clients)
+        ? clients
+        : []
+
+      const currentClient = safeClients.find(
         (item) => item.id === client.id,
       )
 
@@ -281,14 +302,15 @@ function useClients() {
         normalizeClient(updatedClient)
 
       setClients((currentClients) => {
-        const safeCurrentClients = Array.isArray(currentClients)
-          ? currentClients
-          : []
+        const safeCurrentClients =
+          normalizeClientList(currentClients)
 
-        return safeCurrentClients.map((item) =>
-          item.id === normalizedClient.id
-            ? normalizedClient
-            : item,
+        return normalizeClientList(
+          safeCurrentClients.map((item) =>
+            item.id === normalizedClient.id
+              ? normalizedClient
+              : item,
+          ),
         )
       })
 
@@ -307,9 +329,8 @@ function useClients() {
       await deleteClientApi(clientId)
 
       setClients((currentClients) => {
-        const safeCurrentClients = Array.isArray(currentClients)
-          ? currentClients
-          : []
+        const safeCurrentClients =
+          normalizeClientList(currentClients)
 
         return safeCurrentClients.filter(
           (client) => client.id !== clientId,
@@ -319,6 +340,23 @@ function useClients() {
       return true
     } catch (error) {
       console.error('[WATCHDOG][deleteClient] erro:', error)
+
+      if (
+        error.message === 'Not Found' ||
+        error?.response?.status === 404
+      ) {
+        setClients((currentClients) => {
+          const safeCurrentClients =
+            normalizeClientList(currentClients)
+
+          return safeCurrentClients.filter(
+            (client) => client.id !== clientId,
+          )
+        })
+
+        return true
+      }
+
       alert(error.message)
       return false
     }
