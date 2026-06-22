@@ -76,15 +76,7 @@ function normalizeClientList(clients) {
   )
 }
 
-function normalizeApiList(payload, label) {
-  console.log(`[WATCHDOG][${label}] payload bruto:`, payload)
-  console.log(`[WATCHDOG][${label}] Array.isArray:`, Array.isArray(payload))
-  console.log(`[WATCHDOG][${label}] payload?.data:`, payload?.data)
-  console.log(
-    `[WATCHDOG][${label}] Array.isArray(payload?.data):`,
-    Array.isArray(payload?.data),
-  )
-
+function normalizeApiList(payload) {
   if (Array.isArray(payload)) {
     return payload
   }
@@ -92,11 +84,6 @@ function normalizeApiList(payload, label) {
   if (Array.isArray(payload?.data)) {
     return payload.data
   }
-
-  console.warn(
-    `[WATCHDOG][${label}] retorno inesperado. Usando array vazio.`,
-    payload,
-  )
 
   return []
 }
@@ -119,32 +106,14 @@ async function createSessionFromClient(client) {
 }
 
 async function clientHasScheduleConflict(client) {
-  console.log(
-    '[WATCHDOG][clientHasScheduleConflict] client:',
-    client,
-  )
-
   if (!clientHasSchedule(client)) {
-    console.log(
-      '[WATCHDOG][clientHasScheduleConflict] sem agenda no cliente',
-    )
-
     return false
   }
 
   const sessionsPayload = await getSessions()
-
-  const safeSessions = normalizeApiList(
-    sessionsPayload,
-    'getSessions',
-  )
+  const safeSessions = normalizeApiList(sessionsPayload)
 
   return safeSessions.some((session) => {
-    console.log(
-      '[WATCHDOG][clientHasScheduleConflict] session item:',
-      session,
-    )
-
     const sameDate =
       session.data === client.proximaSessao
 
@@ -167,18 +136,11 @@ function useClients() {
     async function loadClients() {
       try {
         const clientsPayload = await getClients()
-
-        const safeClients = normalizeApiList(
-          clientsPayload,
-          'getClients',
-        )
-
-        const uniqueClients =
-          normalizeClientList(safeClients)
+        const safeClients = normalizeApiList(clientsPayload)
+        const uniqueClients = normalizeClientList(safeClients)
 
         setClients(uniqueClients)
       } catch (error) {
-        console.error('[WATCHDOG][loadClients] erro:', error)
         alert(error.message)
       }
     }
@@ -206,15 +168,8 @@ function useClients() {
 
   async function addClient(client) {
     try {
-      console.log('[WATCHDOG][addClient] client:', client)
-
       const hasConflict =
         await clientHasScheduleConflict(client)
-
-      console.log(
-        '[WATCHDOG][addClient] hasConflict:',
-        hasConflict,
-      )
 
       if (hasConflict) {
         alert(
@@ -225,22 +180,9 @@ function useClients() {
       }
 
       const payload = createClientPayload(client)
-
-      console.log('[WATCHDOG][addClient] payload:', payload)
-
       const createdClient = await createClient(payload)
 
-      console.log(
-        '[WATCHDOG][addClient] createdClient:',
-        createdClient,
-      )
-
       if (!createdClient?.id) {
-        console.error(
-          '[WATCHDOG][addClient] cliente criado sem id:',
-          createdClient,
-        )
-
         alert(
           'Cliente criado, mas o retorno da API veio incompleto. Atualize a lista.',
         )
@@ -265,7 +207,6 @@ function useClients() {
 
       return true
     } catch (error) {
-      console.error('[WATCHDOG][addClient] erro:', error)
       alert(error.message)
       return false
     }
@@ -273,8 +214,6 @@ function useClients() {
 
   async function updateClient(client) {
     try {
-      console.log('[WATCHDOG][updateClient] client:', client)
-
       if (!client?.id) {
         alert(
           'Não foi possível editar: cliente sem identificador.',
@@ -285,11 +224,6 @@ function useClients() {
 
       const hasConflict =
         await clientHasScheduleConflict(client)
-
-      console.log(
-        '[WATCHDOG][updateClient] hasConflict:',
-        hasConflict,
-      )
 
       const safeClients = Array.isArray(clients)
         ? clients
@@ -316,24 +250,12 @@ function useClients() {
 
       const payload = createClientPayload(client)
 
-      console.log('[WATCHDOG][updateClient] payload:', payload)
-
       const updatedClient = await updateClientApi(
         client.id,
         payload,
       )
 
-      console.log(
-        '[WATCHDOG][updateClient] updatedClient:',
-        updatedClient,
-      )
-
       if (!updatedClient?.id) {
-        console.error(
-          '[WATCHDOG][updateClient] retorno sem id:',
-          updatedClient,
-        )
-
         alert(
           'Atualização concluída, mas o retorno da API veio incompleto. Recarregue a lista.',
         )
@@ -359,8 +281,6 @@ function useClients() {
 
       return true
     } catch (error) {
-      console.error('[WATCHDOG][updateClient] erro:', error)
-
       if (isNotFoundError(error)) {
         alert(
           'Este cliente não existe mais no servidor. A lista será atualizada.',
@@ -385,8 +305,6 @@ function useClients() {
 
   async function deleteClient(clientId) {
     try {
-      console.log('[WATCHDOG][deleteClient] clientId:', clientId)
-
       await deleteClientApi(clientId)
 
       setClients((currentClients) => {
@@ -400,8 +318,6 @@ function useClients() {
 
       return true
     } catch (error) {
-      console.error('[WATCHDOG][deleteClient] erro:', error)
-
       if (isNotFoundError(error)) {
         setClients((currentClients) => {
           const safeCurrentClients =
@@ -433,4 +349,5 @@ function useClients() {
 }
 
 export default useClients
+
 
