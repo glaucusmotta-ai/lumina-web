@@ -18,7 +18,7 @@ from app.services.email_service import send_email
 logger = logging.getLogger(__name__)
 
 AUTOMATIC_OFFSETS_MINUTES = [60, 15]
-REMINDER_WINDOW_MINUTES = 2
+REMINDER_WINDOW_MINUTES = 15
 
 
 def get_today_reminders(
