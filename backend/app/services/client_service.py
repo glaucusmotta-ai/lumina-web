@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.repositories.client_repository import create_client
-from app.repositories.client_repository import delete_client
+from app.repositories.client_repository import delete_client_by_id_and_user
 from app.repositories.client_repository import get_client_by_id_and_user
 from app.repositories.client_repository import list_clients_by_user
 from app.repositories.client_repository import update_client
@@ -39,9 +39,9 @@ def update_user_client(
     client_data: ClientCreateSchema
 ):
     client = get_client_by_id_and_user(
-        db,
-        client_id,
-        user_id
+        db=db,
+        client_id=client_id,
+        user_id=user_id
     )
 
     if not client:
@@ -51,9 +51,9 @@ def update_user_client(
         )
 
     return update_client(
-        db,
-        client,
-        client_data
+        db=db,
+        client=client,
+        client_data=client_data
     )
 
 
@@ -62,22 +62,17 @@ def delete_user_client(
     user_id: str,
     client_id: str
 ):
-    client = get_client_by_id_and_user(
-        db,
-        client_id,
-        user_id
+    deleted = delete_client_by_id_and_user(
+        db=db,
+        client_id=client_id,
+        user_id=user_id
     )
 
-    if not client:
+    if not deleted:
         raise HTTPException(
             status_code=404,
             detail="Cliente não encontrado."
         )
-
-    delete_client(
-        db,
-        client
-    )
 
     return {
         "status": "deleted"

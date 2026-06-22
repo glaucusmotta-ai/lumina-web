@@ -4,12 +4,15 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
 from app.database.database import get_db
+
 from app.schemas.client_schema import ClientCreateSchema
 from app.schemas.client_schema import ClientResponseSchema
+
 from app.services.client_service import create_user_client
-from app.services.client_service import get_user_clients
 from app.services.client_service import delete_user_client
+from app.services.client_service import get_user_clients
 from app.services.client_service import update_user_client
+
 
 router = APIRouter(
     prefix="/clients",
@@ -27,9 +30,9 @@ def create_client(
     current_user=Depends(get_current_user)
 ):
     return create_user_client(
-        db,
-        current_user.id,
-        client_data
+        db=db,
+        user_id=current_user.id,
+        client_data=client_data
     )
 
 
@@ -42,10 +45,11 @@ def list_clients(
     current_user=Depends(get_current_user)
 ):
     return get_user_clients(
-        db,
-        current_user.id
+        db=db,
+        user_id=current_user.id
     )
-    
+
+
 @router.put(
     "/{client_id}",
     response_model=ClientResponseSchema
@@ -57,10 +61,10 @@ def update_client_route(
     current_user=Depends(get_current_user)
 ):
     return update_user_client(
-        db,
-        current_user.id,
-        client_id,
-        client_data
+        db=db,
+        user_id=current_user.id,
+        client_id=client_id,
+        client_data=client_data
     )
 
 
@@ -73,10 +77,9 @@ def delete_client_route(
     current_user=Depends(get_current_user)
 ):
     return delete_user_client(
-        db,
-        current_user.id,
-        client_id
+        db=db,
+        user_id=current_user.id,
+        client_id=client_id
     )
     
     
-       

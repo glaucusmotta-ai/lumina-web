@@ -39,7 +39,8 @@ def list_clients_by_user(
     ).order_by(
         Client.nome
     ).all()
-    
+
+
 def get_client_by_id_and_user(
     db: Session,
     client_id: str,
@@ -81,6 +82,28 @@ def delete_client(
 ):
     db.delete(client)
     db.commit()
+
+    return True
+
+
+def delete_client_by_id_and_user(
+    db: Session,
+    client_id: str,
+    user_id: str
+):
+    client = get_client_by_id_and_user(
+        db=db,
+        client_id=client_id,
+        user_id=user_id
+    )
+
+    if not client:
+        return False
+
+    return delete_client(
+        db=db,
+        client=client
+    )
     
-       
+    
     
