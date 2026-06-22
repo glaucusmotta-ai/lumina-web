@@ -27,15 +27,21 @@ function ReminderCard({ reminder, onSend }) {
   }
 
   async function handleEmail() {
-    await onSend({
+    const result = await onSend({
       sessionId: reminder.id,
       channel: 'email_manual',
       recipient: reminder.email,
     })
 
-    alert('E-mail manual registrado pelo Lumina.')
-  }
+    if (!result) {
+      alert('Falha ao enviar e-mail.')
+      return
+    }
 
+    alert(
+      'Lembrete enviado por e-mail com sucesso.',
+    )
+  }
   return (
     <article style={styles.card}>
       <h3 style={styles.client}>
