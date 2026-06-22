@@ -189,8 +189,11 @@ def send_session_reminder(
 
             client_message = (
                 f"Olá {session.cliente_nome}, passando para lembrar "
-                f"do seu atendimento hoje às {session.horario}. "
-                "Qualquer dúvida, estamos à disposição."
+                f"do seu atendimento hoje às {session.horario}.\n\n"
+                "Este é um e-mail automático do Lumina.\n"
+                "Por favor, não responda esta mensagem.\n\n"
+                "Caso precise confirmar, reagendar ou tirar dúvidas, "
+                "entre em contato diretamente com seu profissional."
             )
 
             send_email(
