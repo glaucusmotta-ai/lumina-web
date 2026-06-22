@@ -75,17 +75,12 @@ async function clientHasScheduleConflict(client) {
   }
 
   const sessions = await getSessions()
+  const safeSessions = Array.isArray(sessions) ? sessions : []
 
-  return sessions.some((session) => {
-    const sameDate =
-      session.data === client.proximaSessao
-
-    const sameHour =
-      session.horario ===
-      client.horarioProximaSessao
-
-    const sameClient =
-      session.cliente_nome === client.nome
+  return safeSessions.some((session) => {
+    const sameDate = session.data === client.proximaSessao
+    const sameHour = session.horario === client.horarioProximaSessao
+    const sameClient = session.cliente_nome === client.nome
 
     return sameDate && sameHour && !sameClient
   })
@@ -99,6 +94,8 @@ function useClients() {
     async function loadClients() {
       try {
         const data = await getClients()
+        const safeClients = Array.isArray(data) ? data : []
+
         setClients(data.map(normalizeClient))
       } catch (error) {
         alert(error.message)
