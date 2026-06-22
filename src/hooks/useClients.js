@@ -66,10 +66,12 @@ function normalizeClientList(clients) {
 
   return Array.from(
     new Map(
-      safeClients.map((client) => [
-        client.id,
-        normalizeClient(client),
-      ]),
+      safeClients
+        .filter((client) => client && client.id)
+        .map((client) => [
+          client.id,
+          normalizeClient(client),
+        ]),
     ).values(),
   )
 }
@@ -97,6 +99,13 @@ function normalizeApiList(payload, label) {
   )
 
   return []
+}
+
+function isNotFoundError(error) {
+  return (
+    error.message === 'Not Found' ||
+    error?.response?.status === 404
+  )
 }
 
 async function createSessionFromClient(client) {
@@ -226,6 +235,19 @@ function useClients() {
         createdClient,
       )
 
+      if (!createdClient?.id) {
+        console.error(
+          '[WATCHDOG][addClient] cliente criado sem id:',
+          createdClient,
+        )
+
+        alert(
+          'Cliente criado, mas o retorno da API veio incompleto. Atualize a lista.',
+        )
+
+        return false
+      }
+
       const normalizedClient =
         normalizeClient(createdClient)
 
@@ -252,6 +274,14 @@ function useClients() {
   async function updateClient(client) {
     try {
       console.log('[WATCHDOG][updateClient] client:', client)
+
+      if (!client?.id) {
+        alert(
+          'Não foi possível editar: cliente sem identificador.',
+        )
+
+        return false
+      }
 
       const hasConflict =
         await clientHasScheduleConflict(client)
@@ -298,6 +328,19 @@ function useClients() {
         updatedClient,
       )
 
+      if (!updatedClient?.id) {
+        console.error(
+          '[WATCHDOG][updateClient] retorno sem id:',
+          updatedClient,
+        )
+
+        alert(
+          'Atualização concluída, mas o retorno da API veio incompleto. Recarregue a lista.',
+        )
+
+        return false
+      }
+
       const normalizedClient =
         normalizeClient(updatedClient)
 
@@ -317,6 +360,24 @@ function useClients() {
       return true
     } catch (error) {
       console.error('[WATCHDOG][updateClient] erro:', error)
+
+      if (isNotFoundError(error)) {
+        alert(
+          'Este cliente não existe mais no servidor. A lista será atualizada.',
+        )
+
+        setClients((currentClients) => {
+          const safeCurrentClients =
+            normalizeClientList(currentClients)
+
+          return safeCurrentClients.filter(
+            (item) => item.id !== client.id,
+          )
+        })
+
+        return false
+      }
+
       alert(error.message)
       return false
     }
@@ -341,10 +402,7 @@ function useClients() {
     } catch (error) {
       console.error('[WATCHDOG][deleteClient] erro:', error)
 
-      if (
-        error.message === 'Not Found' ||
-        error?.response?.status === 404
-      ) {
+      if (isNotFoundError(error)) {
         setClients((currentClients) => {
           const safeCurrentClients =
             normalizeClientList(currentClients)
@@ -375,5 +433,4 @@ function useClients() {
 }
 
 export default useClients
-
 
