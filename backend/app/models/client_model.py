@@ -47,6 +47,21 @@ class Client(Base):
         nullable=True
     )
 
+    origem_cliente = Column(
+        String,
+        nullable=True
+    )
+
+    regiao = Column(
+        String,
+        nullable=True
+    )
+
+    local_atendimento = Column(
+        String,
+        nullable=True
+    )
+
     proxima_sessao = Column(
         String,
         nullable=True
@@ -56,5 +71,6 @@ class Client(Base):
         String,
         nullable=True
     )
+    
     
     

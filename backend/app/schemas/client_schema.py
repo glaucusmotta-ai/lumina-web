@@ -7,6 +7,11 @@ class ClientCreateSchema(BaseModel):
     whatsapp: str | None = None
     email: str | None = None
     observacoes: str | None = None
+
+    origem_cliente: str | None = None
+    regiao: str | None = None
+    local_atendimento: str | None = None
+
     proxima_sessao: str | None = None
     horario_proxima_sessao: str | None = None
 
@@ -14,11 +19,17 @@ class ClientCreateSchema(BaseModel):
 class ClientResponseSchema(BaseModel):
     id: str
     user_id: str
+
     nome: str
     telefone: str | None = None
     whatsapp: str | None = None
     email: str | None = None
     observacoes: str | None = None
+
+    origem_cliente: str | None = None
+    regiao: str | None = None
+    local_atendimento: str | None = None
+
     proxima_sessao: str | None = None
     horario_proxima_sessao: str | None = None
 
