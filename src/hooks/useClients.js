@@ -59,6 +59,31 @@ function normalizeClient(client) {
   }
 }
 
+function normalizeApiList(payload, label) {
+  console.log(`[WATCHDOG][${label}] payload bruto:`, payload)
+  console.log(`[WATCHDOG][${label}] Array.isArray:`, Array.isArray(payload))
+  console.log(`[WATCHDOG][${label}] payload?.data:`, payload?.data)
+  console.log(
+    `[WATCHDOG][${label}] Array.isArray(payload?.data):`,
+    Array.isArray(payload?.data),
+  )
+
+  if (Array.isArray(payload)) {
+    return payload
+  }
+
+  if (Array.isArray(payload?.data)) {
+    return payload.data
+  }
+
+  console.warn(
+    `[WATCHDOG][${label}] retorno inesperado. Usando array vazio.`,
+    payload,
+  )
+
+  return []
+}
+
 async function createSessionFromClient(client) {
   if (!clientHasSchedule(client)) {
     return
@@ -70,17 +95,41 @@ async function createSessionFromClient(client) {
 }
 
 async function clientHasScheduleConflict(client) {
+  console.log(
+    '[WATCHDOG][clientHasScheduleConflict] client:',
+    client,
+  )
+
   if (!clientHasSchedule(client)) {
+    console.log(
+      '[WATCHDOG][clientHasScheduleConflict] sem agenda no cliente',
+    )
+
     return false
   }
 
-  const sessions = await getSessions()
-  const safeSessions = Array.isArray(sessions) ? sessions : []
+  const sessionsPayload = await getSessions()
+
+  const safeSessions = normalizeApiList(
+    sessionsPayload,
+    'getSessions',
+  )
 
   return safeSessions.some((session) => {
-    const sameDate = session.data === client.proximaSessao
-    const sameHour = session.horario === client.horarioProximaSessao
-    const sameClient = session.cliente_nome === client.nome
+    console.log(
+      '[WATCHDOG][clientHasScheduleConflict] session item:',
+      session,
+    )
+
+    const sameDate =
+      session.data === client.proximaSessao
+
+    const sameHour =
+      session.horario ===
+      client.horarioProximaSessao
+
+    const sameClient =
+      session.cliente_nome === client.nome
 
     return sameDate && sameHour && !sameClient
   })
@@ -93,11 +142,16 @@ function useClients() {
   useEffect(() => {
     async function loadClients() {
       try {
-        const data = await getClients()
-        const safeClients = Array.isArray(data) ? data : []
+        const clientsPayload = await getClients()
 
-        setClients(data.map(normalizeClient))
+        const safeClients = normalizeApiList(
+          clientsPayload,
+          'getClients',
+        )
+
+        setClients(safeClients.map(normalizeClient))
       } catch (error) {
+        console.error('[WATCHDOG][loadClients] erro:', error)
         alert(error.message)
       }
     }
@@ -106,21 +160,34 @@ function useClients() {
   }, [])
 
   const filteredClients = useMemo(() => {
+    const safeClients = Array.isArray(clients)
+      ? clients
+      : []
+
     const term = searchTerm.trim().toLowerCase()
 
     if (!term) {
-      return clients
+      return safeClients
     }
 
-    return clients.filter((client) =>
-      client.nome.toLowerCase().includes(term),
+    return safeClients.filter((client) =>
+      String(client.nome || '')
+        .toLowerCase()
+        .includes(term),
     )
   }, [clients, searchTerm])
 
   async function addClient(client) {
     try {
+      console.log('[WATCHDOG][addClient] client:', client)
+
       const hasConflict =
         await clientHasScheduleConflict(client)
+
+      console.log(
+        '[WATCHDOG][addClient] hasConflict:',
+        hasConflict,
+      )
 
       if (hasConflict) {
         alert(
@@ -130,8 +197,15 @@ function useClients() {
         return false
       }
 
-      const createdClient = await createClient(
-        createClientPayload(client),
+      const payload = createClientPayload(client)
+
+      console.log('[WATCHDOG][addClient] payload:', payload)
+
+      const createdClient = await createClient(payload)
+
+      console.log(
+        '[WATCHDOG][addClient] createdClient:',
+        createdClient,
       )
 
       const normalizedClient =
@@ -139,13 +213,20 @@ function useClients() {
 
       await createSessionFromClient(client)
 
-      setClients((currentClients) => [
-        normalizedClient,
-        ...currentClients,
-      ])
+      setClients((currentClients) => {
+        const safeCurrentClients = Array.isArray(currentClients)
+          ? currentClients
+          : []
+
+        return [
+          normalizedClient,
+          ...safeCurrentClients,
+        ]
+      })
 
       return true
     } catch (error) {
+      console.error('[WATCHDOG][addClient] erro:', error)
       alert(error.message)
       return false
     }
@@ -153,8 +234,15 @@ function useClients() {
 
   async function updateClient(client) {
     try {
+      console.log('[WATCHDOG][updateClient] client:', client)
+
       const hasConflict =
         await clientHasScheduleConflict(client)
+
+      console.log(
+        '[WATCHDOG][updateClient] hasConflict:',
+        hasConflict,
+      )
 
       const currentClient = clients.find(
         (item) => item.id === client.id,
@@ -177,24 +265,36 @@ function useClients() {
 
       const payload = createClientPayload(client)
 
+      console.log('[WATCHDOG][updateClient] payload:', payload)
+
       const updatedClient = await updateClientApi(
         client.id,
         payload,
       )
 
+      console.log(
+        '[WATCHDOG][updateClient] updatedClient:',
+        updatedClient,
+      )
+
       const normalizedClient =
         normalizeClient(updatedClient)
 
-      setClients((currentClients) =>
-        currentClients.map((item) =>
+      setClients((currentClients) => {
+        const safeCurrentClients = Array.isArray(currentClients)
+          ? currentClients
+          : []
+
+        return safeCurrentClients.map((item) =>
           item.id === normalizedClient.id
             ? normalizedClient
             : item,
-        ),
-      )
+        )
+      })
 
       return true
     } catch (error) {
+      console.error('[WATCHDOG][updateClient] erro:', error)
       alert(error.message)
       return false
     }
@@ -202,16 +302,23 @@ function useClients() {
 
   async function deleteClient(clientId) {
     try {
+      console.log('[WATCHDOG][deleteClient] clientId:', clientId)
+
       await deleteClientApi(clientId)
 
-      setClients((currentClients) =>
-        currentClients.filter(
+      setClients((currentClients) => {
+        const safeCurrentClients = Array.isArray(currentClients)
+          ? currentClients
+          : []
+
+        return safeCurrentClients.filter(
           (client) => client.id !== clientId,
-        ),
-      )
+        )
+      })
 
       return true
     } catch (error) {
+      console.error('[WATCHDOG][deleteClient] erro:', error)
       alert(error.message)
       return false
     }
@@ -222,7 +329,7 @@ function useClients() {
     filteredClients,
     searchTerm,
     setSearchTerm,
-    totalClients: clients.length,
+    totalClients: Array.isArray(clients) ? clients.length : 0,
     addClient,
     updateClient,
     deleteClient,
@@ -230,4 +337,5 @@ function useClients() {
 }
 
 export default useClients
+
 
