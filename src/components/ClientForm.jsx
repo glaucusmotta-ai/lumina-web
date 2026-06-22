@@ -25,6 +25,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
       setForm({
         ...emptyForm,
         ...selectedClient,
+        observacoes: selectedClient.observacoes || '',
       })
       return
     }
@@ -41,7 +42,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
     }))
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
     if (!form.nome.trim()) {
@@ -59,7 +60,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
       return
     }
 
-    const submitted = onSubmit(form)
+    const submitted = await onSubmit(form)
 
     if (!submitted) {
       setForm((currentForm) => ({
@@ -93,7 +94,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
             style={styles.input}
             name="nome"
             placeholder="Nome"
-            value={form.nome}
+            value={form.nome || ''}
             onChange={handleChange}
           />
 
@@ -104,7 +105,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
               style={styles.input}
               name="dataNascimento"
               type="date"
-              value={form.dataNascimento}
+              value={form.dataNascimento || ''}
               onChange={handleChange}
             />
           </div>
@@ -115,7 +116,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
             style={styles.input}
             name="telefone"
             placeholder="Telefone"
-            value={form.telefone}
+            value={form.telefone || ''}
             onChange={handleChange}
           />
 
@@ -123,7 +124,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
             style={styles.input}
             name="whatsapp"
             placeholder="WhatsApp"
-            value={form.whatsapp}
+            value={form.whatsapp || ''}
             onChange={handleChange}
           />
         </div>
@@ -132,7 +133,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
           style={styles.input}
           name="email"
           placeholder="E-mail"
-          value={form.email}
+          value={form.email || ''}
           onChange={handleChange}
         />
 
@@ -146,7 +147,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
               <select
                 style={styles.select}
                 name="origemCliente"
-                value={form.origemCliente}
+                value={form.origemCliente || ''}
                 onChange={handleChange}
               >
                 <option value="">Selecione</option>
@@ -166,7 +167,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
               <select
                 style={styles.select}
                 name="localAtendimento"
-                value={form.localAtendimento}
+                value={form.localAtendimento || ''}
                 onChange={handleChange}
               >
                 <option value="">Selecione</option>
@@ -183,7 +184,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
             style={styles.input}
             name="regiao"
             placeholder="Região, bairro, cidade ou zona"
-            value={form.regiao}
+            value={form.regiao || ''}
             onChange={handleChange}
           />
         </div>
@@ -196,7 +197,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
               style={styles.input}
               name="proximaSessao"
               type="date"
-              value={form.proximaSessao}
+              value={form.proximaSessao || ''}
               onChange={handleChange}
             />
           </div>
@@ -208,7 +209,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
               style={styles.input}
               name="horarioProximaSessao"
               type="time"
-              value={form.horarioProximaSessao}
+              value={form.horarioProximaSessao || ''}
               onChange={handleChange}
             />
           </div>
@@ -223,7 +224,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
             style={styles.input}
             name="ultimaSessao"
             type="date"
-            value={form.ultimaSessao}
+            value={form.ultimaSessao || ''}
             onChange={handleChange}
           />
         </div>
@@ -232,7 +233,7 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
           style={styles.textarea}
           name="observacoes"
           placeholder="Observações"
-          value={form.observacoes}
+          value={form.observacoes || ''}
           onChange={handleChange}
         />
       </div>
@@ -257,4 +258,5 @@ function ClientForm({ selectedClient, onSubmit, onCancel }) {
 }
 
 export default ClientForm
+
 

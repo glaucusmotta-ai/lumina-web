@@ -6,21 +6,16 @@ import {
   sendReminder,
 } from '../services/api/reminderApi'
 
-import {
-  getReminderLogs,
-  getTodayReminders,
-  registerReminderSend,
-} from '../services/reminderService'
-
 function normalizeReminder(reminder) {
   return {
     id: reminder.id,
+    sessionId: reminder.id,
     cliente: reminder.cliente_nome || 'Cliente',
     telefone: reminder.cliente_whatsapp || '',
     email: reminder.cliente_email || '',
-    data: reminder.data,
-    horario: reminder.horario,
-    status: reminder.status,
+    data: reminder.data || '',
+    horario: reminder.horario || '',
+    status: reminder.status || '',
     service: reminder.servico || 'Atendimento',
   }
 }
@@ -34,12 +29,12 @@ function normalizeLog(log) {
     service: log.servico || 'Atendimento',
     data: log.data || '',
     horario: log.horario || '',
-    channel: log.canal,
-    recipient: log.destinatario,
+    channel: log.canal || '',
+    recipient: log.destinatario || '',
     type: log.tipo || 'manual',
     offsetMinutes: log.reminder_offset_minutes || null,
-    status: log.status,
-    sentAt: log.sent_at,
+    status: log.status || '',
+    sentAt: log.sent_at || '',
     errorMessage: log.error_message || null,
   }
 }
@@ -52,20 +47,17 @@ function useReminders() {
     async function loadReminders() {
       try {
         const apiReminders = await getTodayReminderItems()
+        setReminders(apiReminders.map(normalizeReminder))
+      } catch (error) {
+        alert(error.message)
+        setReminders([])
+      }
+
+      try {
         const apiLogs = await getReminderApiLogs()
-
-        const normalizedReminders = apiReminders.map(normalizeReminder)
-
-        setReminders(
-          normalizedReminders.length > 0
-            ? normalizedReminders
-            : getTodayReminders(),
-        )
-
         setLogs(apiLogs.map(normalizeLog))
       } catch {
-        setReminders(getTodayReminders())
-        setLogs(getReminderLogs())
+        setLogs([])
       }
     }
 
@@ -85,25 +77,24 @@ function useReminders() {
       const newLog = {
         id: `api-${Date.now()}`,
         sessionId,
+        cliente: '',
+        service: 'Atendimento',
+        data: new Date().toISOString().slice(0, 10),
+        horario: '',
         channel,
         recipient,
-        status: 'enviado',
+        type: 'manual',
+        offsetMinutes: null,
+        status: 'sent',
         sentAt: new Date().toISOString(),
       }
 
       setLogs((prev) => [newLog, ...prev])
 
       return newLog
-    } catch {
-      const log = registerReminderSend({
-        sessionId,
-        channel,
-        recipient,
-      })
-
-      setLogs((prev) => [log, ...prev])
-
-      return log
+    } catch (error) {
+      alert(error.message)
+      return null
     }
   }
 
@@ -115,5 +106,4 @@ function useReminders() {
 }
 
 export default useReminders
-
 

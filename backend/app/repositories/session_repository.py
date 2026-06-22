@@ -38,5 +38,23 @@ def list_sessions_by_user(
         SessionModel.horario
     ).all()
     
-    
+def delete_session_by_id_and_user(
+    db: Session,
+    session_id: str,
+    user_id: str
+):
+    session = db.query(SessionModel).filter(
+        SessionModel.id == session_id,
+        SessionModel.user_id == user_id
+    ).first()
+
+    if not session:
+        return False
+
+    db.delete(session)
+    db.commit()
+
+    return True
+
+
     

@@ -5,9 +5,14 @@ import SessionFormModal from '../components/SessionFormModal'
 import Topbar from '../components/Topbar'
 import Footer from '../components/Footer'
 import { getReminderApiLogs } from '../services/api/reminderApi'
-import { createSession, getSessions } from '../services/api/sessionApi'
 import { SESSION_STATUS } from '../services/scheduleService'
 import { styles } from '../styles/dashboardStyles'
+
+import {
+  createSession,
+  deleteSession,
+  getSessions,
+} from '../services/api/sessionApi'
 
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
@@ -25,9 +30,9 @@ function normalizeSessionFromApi(session) {
   return {
     id: session.id,
     cliente: session.cliente_nome,
-    servico: session.servico,
-    date: session.data,
-    horario: session.horario,
+    servico: session.servico || '',
+    date: session.data || '',
+    horario: session.horario || '',
     telefone: session.cliente_whatsapp || '',
     email: session.cliente_email || '',
     status: session.status || SESSION_STATUS.CONFIRMADA,
@@ -171,9 +176,29 @@ function AgendaScreen() {
     }
   }
 
-  function handleDeleteSession() {
-    alert('Exclusão de agendamento será habilitada no backend na próxima etapa.')
+async function handleDeleteSession(sessionId) {
+  const confirmed = window.confirm(
+    'Deseja realmente excluir este agendamento?',
+  )
+
+  if (!confirmed) {
+    return
   }
+
+  try {
+    await deleteSession(sessionId)
+
+    setSessions((currentSessions) =>
+      currentSessions.filter(
+        (session) => session.id !== sessionId,
+      ),
+    )
+
+    setSelectedDate(null)
+  } catch (error) {
+    alert(error.message)
+  }
+}
 
   function handleStartEdit() {
     alert('Edição de agendamento será habilitada no backend na próxima etapa.')
@@ -350,4 +375,5 @@ function AgendaScreen() {
 }
 
 export default AgendaScreen
+
 

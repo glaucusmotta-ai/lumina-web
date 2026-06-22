@@ -1,17 +1,18 @@
-const CLIENTS_STORAGE_KEY = 'lumina_clients'
-const SESSIONS_STORAGE_KEY = 'lumina-sessions'
+import { getClients } from './api/clientApi'
+import { getSessions } from './api/sessionApi'
 
 const CURRENT_MONTH = '2026-06'
 const TODAY = '2026-06-16'
 
-function getStoredItems(key) {
-  const storedItems = localStorage.getItem(key)
-
-  if (!storedItems) {
-    return []
+function normalizeSession(session) {
+  return {
+    id: session.id,
+    cliente: session.cliente_nome || '',
+    servico: session.servico || '',
+    date: session.data || '',
+    horario: session.horario || '',
+    status: session.status || '',
   }
-
-  return JSON.parse(storedItems)
 }
 
 function getCurrentMonthSessions(sessions) {
@@ -28,17 +29,15 @@ function getFutureSessions(sessions) {
 
 function getConfirmedSessions(sessions) {
   return sessions.filter((session) =>
-    session.status === 'Confirmada',
+    String(session.status).toLowerCase() === 'confirmada',
   )
 }
 
 function getRanking(items, fieldName) {
-  const totals = items.reduce((accumulator, item) => {
+  const totals = items.reduce((acc, item) => {
     const value = item[fieldName] || 'Não informado'
-
-    accumulator[value] = (accumulator[value] || 0) + 1
-
-    return accumulator
+    acc[value] = (acc[value] || 0) + 1
+    return acc
   }, {})
 
   return Object.entries(totals)
@@ -47,9 +46,7 @@ function getRanking(items, fieldName) {
 }
 
 function getTopLabel(ranking) {
-  if (!ranking.length) {
-    return 'Não informado'
-  }
+  if (!ranking.length) return 'Não informado'
 
   const topTotal = ranking[0].total
 
@@ -59,28 +56,14 @@ function getTopLabel(ranking) {
     .join(' / ')
 }
 
-function getHourFromSession(session) {
-  if (!session.horario) {
-    return null
-  }
-
-  return Number(session.horario.split(':')[0])
-}
-
 function getPeriodFromSession(session) {
-  const hour = getHourFromSession(session)
+  if (!session.horario) return 'Não informado'
 
-  if (hour === null || Number.isNaN(hour)) {
-    return 'Não informado'
-  }
+  const hour = Number(session.horario.split(':')[0])
 
-  if (hour < 12) {
-    return 'Manhã'
-  }
-
-  if (hour < 18) {
-    return 'Tarde'
-  }
+  if (Number.isNaN(hour)) return 'Não informado'
+  if (hour < 12) return 'Manhã'
+  if (hour < 18) return 'Tarde'
 
   return 'Noite'
 }
@@ -94,67 +77,27 @@ function getPeriodRanking(sessions) {
 
   sessions.forEach((session) => {
     const period = getPeriodFromSession(session)
-    const targetPeriod = periods.find((item) => item.label === period)
+    const item = periods.find((periodItem) => periodItem.label === period)
 
-    if (targetPeriod) {
-      targetPeriod.total += 1
-    }
+    if (item) item.total += 1
   })
 
   return periods
 }
 
 function getHourRanking(sessions) {
-  const totals = sessions.reduce((accumulator, session) => {
-    if (!session.horario) {
-      return accumulator
-    }
+  const totals = sessions.reduce((acc, session) => {
+    if (!session.horario) return acc
 
     const hour = `${session.horario.split(':')[0]}h`
+    acc[hour] = (acc[hour] || 0) + 1
 
-    accumulator[hour] = (accumulator[hour] || 0) + 1
-
-    return accumulator
+    return acc
   }, {})
 
   return Object.entries(totals)
     .map(([label, total]) => ({ label, total }))
     .sort((a, b) => b.total - a.total)
-}
-
-function getPeriodBreakdown(sessions, periodLabel) {
-  const filteredSessions = sessions.filter((session) =>
-    getPeriodFromSession(session) === periodLabel,
-  )
-
-  return getHourRanking(filteredSessions)
-}
-
-function formatSessionsText(total) {
-  return total === 1 ? '1 sessão' : `${total} sessões`
-}
-
-function getPeriodHelper(periodRanking, periodBreakdown) {
-  if (!periodRanking.length || periodRanking[0].total === 0) {
-    return 'Sem sessões registradas no período'
-  }
-
-  const topPeriod = periodRanking[0]
-  const breakdownText = periodBreakdown
-    .map((item) => `${item.label}: ${formatSessionsText(item.total)}`)
-    .join(' • ')
-
-  return `${breakdownText} • Total: ${formatSessionsText(topPeriod.total)}`
-}
-
-function getHourHelper(hourRanking) {
-  if (!hourRanking.length) {
-    return 'Sem horários registrados'
-  }
-
-  const topHour = hourRanking[0]
-
-  return `${formatSessionsText(topHour.total)} registradas neste horário`
 }
 
 function getWeekNumber(date) {
@@ -176,14 +119,12 @@ function getWeeklyHistory(sessions) {
   ]
 
   sessions.forEach((session) => {
-    if (!session.date) {
-      return
-    }
+    if (!session.date) return
 
-    const weekIndex = getWeekNumber(session.date) - 1
+    const index = getWeekNumber(session.date) - 1
 
-    if (weeks[weekIndex]) {
-      weeks[weekIndex].sessions += 1
+    if (weeks[index]) {
+      weeks[index].sessions += 1
     }
   })
 
@@ -191,44 +132,51 @@ function getWeeklyHistory(sessions) {
 }
 
 function getMonthlyEvolution(sessions) {
-  const totals = sessions.reduce((accumulator, session) => {
-    if (!session.date) {
-      return accumulator
-    }
+  const totals = sessions.reduce((acc, session) => {
+    if (!session.date) return acc
 
     const month = session.date.slice(0, 7)
+    acc[month] = (acc[month] || 0) + 1
 
-    accumulator[month] = (accumulator[month] || 0) + 1
-
-    return accumulator
+    return acc
   }, {})
 
   return Object.entries(totals)
-    .map(([month, total]) => ({
-      label: month,
-      total,
-    }))
+    .map(([label, total]) => ({ label, total }))
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
-export function getMetricsData() {
-  const clients = getStoredItems(CLIENTS_STORAGE_KEY)
-  const sessions = getStoredItems(SESSIONS_STORAGE_KEY)
+function formatSessionsText(total) {
+  return total === 1 ? '1 sessão' : `${total} sessões`
+}
+
+function getHourHelper(hourRanking) {
+  if (!hourRanking.length) return 'Sem horários registrados'
+
+  return `${formatSessionsText(hourRanking[0].total)} registradas neste horário`
+}
+
+export async function getMetricsData() {
+  const [clients, rawSessions] = await Promise.all([
+    getClients(),
+    getSessions(),
+  ])
+
+  const sessions = rawSessions.map(normalizeSession)
 
   const monthSessions = getCurrentMonthSessions(sessions)
   const futureSessions = getFutureSessions(sessions)
   const confirmedSessions = getConfirmedSessions(sessions)
 
-  const originRanking = getRanking(clients, 'origemCliente')
+  const originRanking = getRanking(clients, 'origem_cliente')
+  const locationRanking = getRanking(clients, 'local_atendimento')
   const regionRanking = getRanking(clients, 'regiao')
-  const locationRanking = getRanking(clients, 'localAtendimento')
   const periodRanking = getPeriodRanking(monthSessions)
   const hourRanking = getHourRanking(monthSessions)
   const weeklyHistory = getWeeklyHistory(monthSessions)
   const monthlyEvolution = getMonthlyEvolution(sessions)
 
   const topPeriod = getTopLabel(periodRanking)
-  const topPeriodBreakdown = getPeriodBreakdown(monthSessions, topPeriod)
 
   const confirmationRate = sessions.length
     ? Math.round((confirmedSessions.length / sessions.length) * 100)
@@ -285,7 +233,7 @@ export function getMetricsData() {
       {
         label: 'Faixa do dia mais utilizada',
         value: topPeriod,
-        helper: getPeriodHelper(periodRanking, topPeriodBreakdown),
+        helper: 'Baseado nas sessões do mês',
       },
       {
         label: 'Horário mais procurado',
@@ -309,4 +257,5 @@ export function getMetricsData() {
     hourRanking,
   }
 }
+
 

@@ -8,6 +8,7 @@ from app.schemas.session_schema import SessionCreateSchema
 from app.schemas.session_schema import SessionResponseSchema
 from app.services.session_service import create_user_session
 from app.services.session_service import get_user_sessions
+from app.services.session_service import delete_user_session
 
 router = APIRouter(
     prefix="/sessions",
@@ -43,6 +44,29 @@ def list_sessions(
         db,
         current_user.id
     )
+
+@router.delete("/{session_id}")
+def delete_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    deleted = delete_user_session(
+        db,
+        session_id,
+        current_user.id
+    )
+
+    if not deleted:
+        return {
+            "success": False,
+            "message": "Sessão não encontrada."
+        }
+
+    return {
+        "success": True
+    }
     
+        
     
     

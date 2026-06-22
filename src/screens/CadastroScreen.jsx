@@ -24,9 +24,9 @@ function CadastroScreen() {
   const [selectedClient, setSelectedClient] = useState(null)
   const [activeView, setActiveView] = useState('list')
 
-  function handleSubmit(client) {
+  async function handleSubmit(client) {
     if (selectedClient) {
-      const updated = updateClient(client)
+      const updated = await updateClient(client)
 
       if (!updated) {
         return false
@@ -37,7 +37,7 @@ function CadastroScreen() {
       return true
     }
 
-    const created = addClient(client)
+    const created = await addClient(client)
 
     if (!created) {
       return false
@@ -155,11 +155,11 @@ function CadastroScreen() {
           </>
         )}
       </section>
+
       <Footer />
     </main>
   )
 }
 
 export default CadastroScreen
-
 

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { createClient, getClients } from '../services/api/clientApi'
-import { createSession } from '../services/api/sessionApi'
-import { hasScheduleConflict } from '../services/scheduleService'
+import {
+  createClient,
+  getClients,
+  updateClient as updateClientApi,
+} from '../services/api/clientApi'
+
+import { createSession, getSessions } from '../services/api/sessionApi'
 
 function clientHasSchedule(client) {
   return Boolean(client.proximaSessao && client.horarioProximaSessao)
@@ -27,6 +31,9 @@ function createClientPayload(client) {
     whatsapp: client.whatsapp || null,
     email: client.email || null,
     observacoes: client.observacoes || null,
+    origem_cliente: client.origemCliente || null,
+    regiao: client.regiao || null,
+    local_atendimento: client.localAtendimento || null,
     proxima_sessao: client.proximaSessao || null,
     horario_proxima_sessao: client.horarioProximaSessao || null,
   }
@@ -35,6 +42,9 @@ function createClientPayload(client) {
 function normalizeClient(client) {
   return {
     ...client,
+    origemCliente: client.origem_cliente || '',
+    regiao: client.regiao || '',
+    localAtendimento: client.local_atendimento || '',
     proximaSessao: client.proxima_sessao || '',
     horarioProximaSessao: client.horario_proxima_sessao || '',
   }
@@ -45,21 +55,22 @@ async function createSessionFromClient(client) {
     return
   }
 
-  try {
-    await createSession(createSessionPayloadFromClient(client))
-  } catch {
-    //
-  }
+  await createSession(createSessionPayloadFromClient(client))
 }
 
-function clientHasScheduleConflict(client) {
+async function clientHasScheduleConflict(client) {
   if (!clientHasSchedule(client)) {
     return false
   }
 
-  return hasScheduleConflict({
-    date: client.proximaSessao,
-    horario: client.horarioProximaSessao,
+  const sessions = await getSessions()
+
+  return sessions.some((session) => {
+    const sameDate = session.data === client.proximaSessao
+    const sameHour = session.horario === client.horarioProximaSessao
+    const sameClient = session.cliente_nome === client.nome
+
+    return sameDate && sameHour && !sameClient
   })
 }
 
@@ -93,17 +104,23 @@ function useClients() {
   }, [clients, searchTerm])
 
   async function addClient(client) {
-    if (clientHasScheduleConflict(client)) {
-      alert('Já existe um agendamento para este dia e horário.')
-      return false
-    }
-
     try {
+      const hasConflict = await clientHasScheduleConflict(client)
+
+      if (hasConflict) {
+        alert('Já existe um agendamento para este dia e horário.')
+        return false
+      }
+
       const createdClient = await createClient(createClientPayload(client))
       const normalizedClient = normalizeClient(createdClient)
 
-      setClients((currentClients) => [normalizedClient, ...currentClients])
       await createSessionFromClient(client)
+
+      setClients((currentClients) => [
+        normalizedClient,
+        ...currentClients,
+      ])
 
       return true
     } catch (error) {
@@ -112,9 +129,46 @@ function useClients() {
     }
   }
 
-  function updateClient() {
-    alert('Edição de clientes no backend será habilitada na próxima etapa.')
-    return false
+  async function updateClient(client) {
+    try {
+      const hasConflict = await clientHasScheduleConflict(client)
+
+      const currentClient = clients.find(
+        (item) => item.id === client.id,
+      )
+
+      const sameSchedule =
+        currentClient &&
+        currentClient.proximaSessao === client.proximaSessao &&
+        currentClient.horarioProximaSessao === client.horarioProximaSessao
+
+      if (hasConflict && !sameSchedule) {
+        alert('Já existe um agendamento para este dia e horário.')
+        return false
+      }
+
+      const payload = createClientPayload(client)
+
+      const updatedClient = await updateClientApi(
+        client.id,
+        payload,
+      )
+
+      const normalizedClient = normalizeClient(updatedClient)
+
+      setClients((currentClients) =>
+        currentClients.map((item) =>
+          item.id === normalizedClient.id
+            ? normalizedClient
+            : item,
+        ),
+      )
+
+      return true
+    } catch (error) {
+      alert(error.message)
+      return false
+    }
   }
 
   function deleteClient() {
@@ -134,4 +188,5 @@ function useClients() {
 }
 
 export default useClients
+
 
