@@ -1,17 +1,34 @@
 import { apiClient } from './apiClient'
 
-export function getClients() {
-  return apiClient.get('/clients')
+export async function getClients() {
+  const response = await apiClient.get('/clients')
+  return response.data
 }
 
-export function createClient(clientData) {
-  return apiClient.post('/clients', clientData)
+export async function createClient(clientData) {
+  const response = await apiClient.post(
+    '/clients',
+    clientData,
+  )
+
+  return response.data
 }
 
-export function updateClient(clientId, clientData) {
-  return apiClient.put(
+export async function updateClient(clientId, clientData) {
+  const response = await apiClient.put(
     `/clients/${clientId}`,
     clientData,
   )
+
+  return response.data
 }
+
+export async function deleteClient(clientId) {
+  const response = await apiClient.delete(
+    `/clients/${clientId}`,
+  )
+
+  return response.data
+}
+
 

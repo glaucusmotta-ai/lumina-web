@@ -52,6 +52,18 @@ function CadastroScreen() {
     setActiveView('create')
   }
 
+  async function handleDelete(clientId) {
+    const confirmed = window.confirm(
+      'Deseja realmente excluir este cliente?',
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    await deleteClient(clientId)
+  }
+
   function handleCancelEdit() {
     setSelectedClient(null)
     setActiveView('list')
@@ -76,7 +88,9 @@ function CadastroScreen() {
         <h1 style={styles.title}>Clientes</h1>
 
         <p style={styles.subtitle}>
-          Organize clientes, contatos e histórico de atendimento em uma experiência simples, leve e profissional.
+          Organize clientes, contatos e histórico
+          de atendimento em uma experiência simples,
+          leve e profissional.
         </p>
       </section>
 
@@ -86,9 +100,13 @@ function CadastroScreen() {
             type="button"
             style={{
               ...styles.actionButton,
-              ...(activeView === 'create' ? styles.actionButtonActive : {}),
+              ...(activeView === 'create'
+                ? styles.actionButtonActive
+                : {}),
             }}
-            onClick={() => handleChangeView('create')}
+            onClick={() =>
+              handleChangeView('create')
+            }
           >
             Cadastrar
           </button>
@@ -97,9 +115,13 @@ function CadastroScreen() {
             type="button"
             style={{
               ...styles.actionButton,
-              ...(activeView === 'list' ? styles.actionButtonActive : {}),
+              ...(activeView === 'list'
+                ? styles.actionButtonActive
+                : {}),
             }}
-            onClick={() => handleChangeView('list')}
+            onClick={() =>
+              handleChangeView('list')
+            }
           >
             Listar clientes
           </button>
@@ -108,16 +130,21 @@ function CadastroScreen() {
             type="button"
             style={{
               ...styles.actionButton,
-              ...(activeView === 'search' ? styles.actionButtonActive : {}),
+              ...(activeView === 'search'
+                ? styles.actionButtonActive
+                : {}),
             }}
-            onClick={() => handleChangeView('search')}
+            onClick={() =>
+              handleChangeView('search')
+            }
           >
             Buscar clientes
           </button>
         </div>
 
         <div style={styles.totalInfo}>
-          Total de clientes: <strong>{totalClients}</strong>
+          Total de clientes:{' '}
+          <strong>{totalClients}</strong>
         </div>
       </section>
 
@@ -135,7 +162,7 @@ function CadastroScreen() {
             clients={filteredClients}
             searchTerm={searchTerm}
             onEdit={handleEdit}
-            onDelete={deleteClient}
+            onDelete={handleDelete}
           />
         )}
 
@@ -150,7 +177,7 @@ function CadastroScreen() {
               clients={filteredClients}
               searchTerm={searchTerm}
               onEdit={handleEdit}
-              onDelete={deleteClient}
+              onDelete={handleDelete}
             />
           </>
         )}
@@ -162,4 +189,5 @@ function CadastroScreen() {
 }
 
 export default CadastroScreen
+
 
