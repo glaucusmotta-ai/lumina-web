@@ -1,7 +1,12 @@
+import logging
+
 from sqlalchemy.orm import Session
 
 from app.models.client_model import Client
 from app.schemas.client_schema import ClientCreateSchema
+
+
+logger = logging.getLogger(__name__)
 
 
 def create_client(
@@ -46,10 +51,33 @@ def get_client_by_id_and_user(
     client_id: str,
     user_id: str
 ):
-    return db.query(Client).filter(
+    client = db.query(Client).filter(
         Client.id == client_id,
         Client.user_id == user_id
     ).first()
+
+    if client:
+        return client
+
+    fallback = db.query(Client).filter(
+        Client.id == client_id
+    ).first()
+
+    if fallback:
+        logger.warning(
+            "CLIENT_OWNERSHIP_BLOCKED client_id=%s requested_user_id=%s owner_user_id=%s",
+            client_id,
+            user_id,
+            fallback.user_id
+        )
+    else:
+        logger.warning(
+            "CLIENT_NOT_FOUND client_id=%s requested_user_id=%s",
+            client_id,
+            user_id
+        )
+
+    return None
 
 
 def update_client(
