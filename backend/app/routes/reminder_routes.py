@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_active_user
 from app.database.database import get_db
 from app.schemas.reminder_schema import ReminderLogResponseSchema
 from app.schemas.reminder_schema import ReminderSendSchema
