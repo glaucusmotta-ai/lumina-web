@@ -1,3 +1,4 @@
+// src/screens/AgendaScreen.jsx
 import { useEffect, useMemo, useState } from 'react'
 
 import SessionCard from '../components/SessionCard'
@@ -6,27 +7,32 @@ import Topbar from '../components/Topbar'
 import Footer from '../components/Footer'
 
 import { getReminderApiLogs } from '../services/api/reminderApi'
-
-import {
-  createSession,
-  deleteSession,
-  getSessions,
-  updateSession,
-} from '../services/api/sessionApi'
-
+import { createSession, deleteSession, getSessions, updateSession } from '../services/api/sessionApi'
 import { SESSION_STATUS } from '../services/scheduleService'
 import { styles } from '../styles/dashboardStyles'
 
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
-const initialForm = {
-  cliente: '',
-  servico: '',
-  date: '2026-06-16',
-  horario: '',
-  telefone: '',
-  email: '',
-  status: SESSION_STATUS.CONFIRMADA,
+const MONTH_NAMES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril',
+  'Maio', 'Junho', 'Julho', 'Agosto',
+  'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+]
+
+function getTodayString() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function buildInitialForm(dateStr) {
+  return {
+    cliente: '',
+    servico: '',
+    date: dateStr,
+    horario: '',
+    telefone: '',
+    email: '',
+    status: SESSION_STATUS.CONFIRMADA,
+  }
 }
 
 function normalizeSessionFromApi(session) {
@@ -54,43 +60,37 @@ function normalizeSessionToApi(form) {
   }
 }
 
-function hasConflictInSessions({
-  sessions,
-  date,
-  horario,
-  ignoreSessionId = null,
-}) {
-  if (!date || !horario) {
-    return false
-  }
-
+function hasConflictInSessions({ sessions, date, horario, ignoreSessionId = null }) {
+  if (!date || !horario) return false
   return sessions.some(
-    (session) =>
-      session.date === date &&
-      session.horario === horario &&
-      session.id !== ignoreSessionId,
+    (s) => s.date === date && s.horario === horario && s.id !== ignoreSessionId,
   )
 }
 
+function padDay(day) {
+  return String(day).padStart(2, '0')
+}
+
 function AgendaScreen() {
+  const today = getTodayString()
+  const todayDate = new Date(today + 'T00:00:00')
+
+  const [currentYear, setCurrentYear] = useState(todayDate.getFullYear())
+  const [currentMonth, setCurrentMonth] = useState(todayDate.getMonth())
   const [selectedDate, setSelectedDate] = useState(null)
   const [reminderLogs, setReminderLogs] = useState([])
   const [sessions, setSessions] = useState([])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingSessionId, setEditingSessionId] = useState(null)
-  const [form, setForm] = useState(initialForm)
+  const [form, setForm] = useState(buildInitialForm(today))
 
-  const year = 2026
-  const month = 5
-  const monthLabel = 'Junho de 2026'
+  const monthLabel = `${MONTH_NAMES[currentMonth]} de ${currentYear}`
 
   useEffect(() => {
     async function loadAgendaData() {
       try {
         const apiSessions = await getSessions()
-
         setSessions(apiSessions.map(normalizeSessionFromApi))
-
         try {
           const apiLogs = await getReminderApiLogs()
           setReminderLogs(apiLogs)
@@ -103,100 +103,61 @@ function AgendaScreen() {
         setReminderLogs([])
       }
     }
-
     loadAgendaData()
   }, [])
 
+  function prevMonth() {
+    setSelectedDate(null)
+    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear((y) => y - 1) }
+    else setCurrentMonth((m) => m - 1)
+  }
+
+  function nextMonth() {
+    setSelectedDate(null)
+    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear((y) => y + 1) }
+    else setCurrentMonth((m) => m + 1)
+  }
+
   const calendarDays = useMemo(() => {
-    const firstDay = new Date(year, month, 1).getDay()
-    const daysInMonth = new Date(year, month + 1, 0).getDate()
-
-    const emptyDays = Array.from(
-      { length: firstDay },
-      () => null,
-    )
-
-    const monthDays = Array.from(
-      { length: daysInMonth },
-      (_, index) => index + 1,
-    )
-
-    return [...emptyDays, ...monthDays]
-  }, [])
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay()
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+    return [
+      ...Array.from({ length: firstDay }, () => null),
+      ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+    ]
+  }, [currentYear, currentMonth])
 
   function getDateKey(day) {
-    return `2026-06-${String(day).padStart(2, '0')}`
+    return `${currentYear}-${padDay(currentMonth + 1)}-${padDay(day)}`
   }
 
   function getSessionsByDate(date) {
-    if (!date) {
-      return []
-    }
-
-    return sessions.filter(
-      (session) => session.date === date,
-    )
+    return sessions.filter((s) => s.date === date)
   }
 
   function hasAutomaticReminderSent(session) {
     return reminderLogs.some(
-      (log) =>
-        log.session_id === session.id &&
-        log.canal === 'email_cliente' &&
-        log.tipo === 'automatico' &&
-        log.status === 'sent',
+      (log) => log.session_id === session.id && log.canal === 'email_cliente' && log.tipo === 'automatico' && log.status === 'sent',
     )
   }
 
   function handleChange(field, value) {
-    setForm((currentForm) => ({
-      ...currentForm,
-      [field]: value,
-    }))
+    setForm((f) => ({ ...f, [field]: value }))
   }
 
   async function handleCreateSession() {
-    if (
-      !form.cliente ||
-      !form.servico ||
-      !form.date ||
-      !form.horario
-    ) {
-      alert(
-        'Preencha cliente, serviço, data e horário.',
-      )
-
+    if (!form.cliente || !form.servico || !form.date || !form.horario) {
+      alert('Preencha cliente, serviço, data e horário.')
       return
     }
-
-    if (
-      hasConflictInSessions({
-        sessions,
-        date: form.date,
-        horario: form.horario,
-      })
-    ) {
-      alert(
-        'Já existe um agendamento para este dia e horário.',
-      )
-
+    if (hasConflictInSessions({ sessions, date: form.date, horario: form.horario })) {
+      alert('Já existe um agendamento para este dia e horário.')
       return
     }
-
     try {
-      const apiSession = await createSession(
-        normalizeSessionToApi(form),
-      )
-
-      const normalizedSession =
-        normalizeSessionFromApi(apiSession)
-
-      setSessions((currentSessions) => [
-        ...currentSessions,
-        normalizedSession,
-      ])
-
-      setForm(initialForm)
+      const apiSession = await createSession(normalizeSessionToApi(form))
+      setSessions((prev) => [...prev, normalizeSessionFromApi(apiSession)])
+      setForm(buildInitialForm(today))
       setEditingSessionId(null)
       setIsCreateOpen(false)
     } catch (error) {
@@ -205,52 +166,19 @@ function AgendaScreen() {
   }
 
   async function handleUpdateSession() {
-    if (
-      !form.cliente ||
-      !form.servico ||
-      !form.date ||
-      !form.horario
-    ) {
-      alert(
-        'Preencha cliente, serviço, data e horário.',
-      )
-
+    if (!form.cliente || !form.servico || !form.date || !form.horario) {
+      alert('Preencha cliente, serviço, data e horário.')
       return
     }
-
-    if (
-      hasConflictInSessions({
-        sessions,
-        date: form.date,
-        horario: form.horario,
-        ignoreSessionId: editingSessionId,
-      })
-    ) {
-      alert(
-        'Já existe um agendamento para este dia e horário.',
-      )
-
+    if (hasConflictInSessions({ sessions, date: form.date, horario: form.horario, ignoreSessionId: editingSessionId })) {
+      alert('Já existe um agendamento para este dia e horário.')
       return
     }
-
     try {
-      const apiSession = await updateSession(
-        editingSessionId,
-        normalizeSessionToApi(form),
-      )
-
-      const normalizedSession =
-        normalizeSessionFromApi(apiSession)
-
-      setSessions((currentSessions) =>
-        currentSessions.map((session) =>
-          session.id === editingSessionId
-            ? normalizedSession
-            : session,
-        ),
-      )
-
-      setForm(initialForm)
+      const apiSession = await updateSession(editingSessionId, normalizeSessionToApi(form))
+      const normalized = normalizeSessionFromApi(apiSession)
+      setSessions((prev) => prev.map((s) => s.id === editingSessionId ? normalized : s))
+      setForm(buildInitialForm(today))
       setEditingSessionId(null)
       setIsCreateOpen(false)
     } catch (error) {
@@ -259,23 +187,10 @@ function AgendaScreen() {
   }
 
   async function handleDeleteSession(sessionId) {
-    const confirmed = window.confirm(
-      'Deseja realmente excluir este agendamento?',
-    )
-
-    if (!confirmed) {
-      return
-    }
-
+    if (!window.confirm('Deseja realmente excluir este agendamento?')) return
     try {
       await deleteSession(sessionId)
-
-      setSessions((currentSessions) =>
-        currentSessions.filter(
-          (session) => session.id !== sessionId,
-        ),
-      )
-
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId))
       setSelectedDate(null)
     } catch (error) {
       alert(error.message)
@@ -284,7 +199,6 @@ function AgendaScreen() {
 
   function handleStartEdit(session) {
     setEditingSessionId(session.id)
-
     setForm({
       cliente: session.cliente || '',
       servico: session.servico || '',
@@ -292,123 +206,86 @@ function AgendaScreen() {
       horario: session.horario || '',
       telefone: session.telefone || '',
       email: session.email || '',
-      status:
-        session.status ||
-        SESSION_STATUS.CONFIRMADA,
+      status: session.status || SESSION_STATUS.CONFIRMADA,
     })
-
     setIsCreateOpen(true)
   }
 
   function openCreateModal() {
     setEditingSessionId(null)
-    setForm(initialForm)
+    setForm(buildInitialForm(today))
     setIsCreateOpen(true)
   }
 
   function closeCreateModal() {
     setIsCreateOpen(false)
     setEditingSessionId(null)
-    setForm(initialForm)
+    setForm(buildInitialForm(today))
   }
 
   function openWhatsApp(session) {
-    const message =
-      `Olá, ${session.cliente}! ` +
-      `Passando para lembrar da sua sessão ` +
-      `de ${session.servico} às ${session.horario}.`
-
-    const url =
-      `https://wa.me/${session.telefone}` +
-      `?text=${encodeURIComponent(message)}`
-
-    window.open(url, '_blank')
+    const message = `Olá, ${session.cliente}! Passando para lembrar da sua sessão de ${session.servico} às ${session.horario}.`
+    window.open(`https://wa.me/${session.telefone}?text=${encodeURIComponent(message)}`, '_blank')
   }
 
   function openEmail(session) {
     const subject = 'Lembrete da sua sessão'
-
-    const body =
-      `Olá, ${session.cliente}!\n\n` +
-      `Passando para lembrar da sua sessão ` +
-      `de ${session.servico} às ${session.horario}.\n\n` +
-      'Até breve!'
-
-    const url =
-      `mailto:${session.email}` +
-      `?subject=${encodeURIComponent(subject)}` +
-      `&body=${encodeURIComponent(body)}`
-
-    window.location.href = url
+    const body = `Olá, ${session.cliente}!\n\nPassando para lembrar da sua sessão de ${session.servico} às ${session.horario}.\n\nAté breve!`
+    window.location.href = `mailto:${session.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }
 
-  const selectedSessions = getSessionsByDate(
-    selectedDate,
-  ).sort((a, b) =>
+  const selectedSessions = getSessionsByDate(selectedDate || '').sort((a, b) =>
     a.horario.localeCompare(b.horario),
   )
+  const selectedDay = selectedDate ? Number(selectedDate.split('-')[2]) : null
 
-  const selectedDay = selectedDate
-    ? Number(selectedDate.split('-')[2])
-    : null
+  const navButtonStyle = {
+    border: 'none',
+    background: 'rgba(214, 156, 170, 0.16)',
+    color: '#8f4459',
+    borderRadius: '50%',
+    width: 36,
+    height: 36,
+    cursor: 'pointer',
+    fontWeight: 800,
+    fontSize: 16,
+    display: 'grid',
+    placeItems: 'center',
+  }
 
   return (
     <main style={styles.page}>
       <Topbar variant="back" />
 
       <section style={styles.header}>
-        <p style={styles.kicker}>
-          Agenda
-        </p>
-
-        <h1 style={styles.title}>
-          Agenda mensal
-        </h1>
-
+        <p style={styles.kicker}>Agenda</p>
+        <h1 style={styles.title}>Agenda mensal</h1>
         <p style={styles.subtitle}>
-          Clique em um dia para visualizar
-          sessões, horários e contatos.
+          Clique em um dia para visualizar sessões, horários e contatos.
         </p>
-
-        <button
-          type="button"
-          style={styles.buttonPrimary}
-          onClick={openCreateModal}
-        >
+        <button type="button" style={styles.buttonPrimary} onClick={openCreateModal}>
           + Novo agendamento
         </button>
       </section>
 
       <section style={styles.calendarCard}>
-        <div style={styles.calendarHeader}>
-          <h2 style={styles.calendarTitle}>
-            {monthLabel}
-          </h2>
+        <div style={{ ...styles.calendarHeader, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button type="button" style={navButtonStyle} onClick={prevMonth}>‹</button>
+          <h2 style={styles.calendarTitle}>{monthLabel}</h2>
+          <button type="button" style={navButtonStyle} onClick={nextMonth}>›</button>
         </div>
 
         <div style={styles.weekGrid}>
           {weekDays.map((day, index) => (
-            <div
-              key={`${day}-${index}`}
-              style={styles.weekDay}
-            >
-              {day}
-            </div>
+            <div key={`${day}-${index}`} style={styles.weekDay}>{day}</div>
           ))}
         </div>
 
         <div style={styles.monthGrid}>
           {calendarDays.map((day, index) => {
-            const dateKey = day
-              ? getDateKey(day)
-              : null
-
-            const daySessions = dateKey
-              ? getSessionsByDate(dateKey)
-              : []
-
-            const hasSessions =
-              daySessions.length > 0
+            const dateKey = day ? getDateKey(day) : null
+            const daySessions = dateKey ? getSessionsByDate(dateKey) : []
+            const isToday = dateKey === today
 
             return (
               <button
@@ -417,28 +294,16 @@ function AgendaScreen() {
                 disabled={!day}
                 style={{
                   ...styles.monthDay,
-                  ...(day === 16
-                    ? styles.monthDayToday
-                    : {}),
-                  ...(hasSessions
-                    ? styles.monthDayWithSession
-                    : {}),
+                  ...(isToday ? styles.monthDayToday : {}),
+                  ...(daySessions.length > 0 ? styles.monthDayWithSession : {}),
                 }}
-                onClick={() =>
-                  dateKey &&
-                  setSelectedDate(dateKey)
-                }
+                onClick={() => dateKey && setSelectedDate(dateKey)}
               >
                 {day && (
                   <>
                     <span>{day}</span>
-
-                    {hasSessions && (
-                      <small
-                        style={styles.dayBadge}
-                      >
-                        {daySessions.length}
-                      </small>
+                    {daySessions.length > 0 && (
+                      <small style={styles.dayBadge}>{daySessions.length}</small>
                     )}
                   </>
                 )}
@@ -453,56 +318,26 @@ function AgendaScreen() {
           <div style={styles.popup}>
             <div style={styles.popupHeader}>
               <h2 style={styles.popupTitle}>
-                Dia {selectedDay} • Junho
+                Dia {selectedDay} • {MONTH_NAMES[currentMonth]}
               </h2>
-
-              <button
-                type="button"
-                style={styles.popupClose}
-                onClick={() =>
-                  setSelectedDate(null)
-                }
-              >
+              <button type="button" style={styles.popupClose} onClick={() => setSelectedDate(null)}>
                 Fechar
               </button>
             </div>
-
             <div style={styles.popupBody}>
               {selectedSessions.length === 0 && (
-                <p
-                  style={
-                    styles.cardDescription
-                  }
-                >
-                  Nenhum agendamento neste
-                  dia.
-                </p>
+                <p style={styles.cardDescription}>Nenhum agendamento neste dia.</p>
               )}
-
-              {selectedSessions.map(
-                (session) => (
-                  <SessionCard
-                    key={session.id}
-                    session={{
-                      ...session,
-                      reminderSent:
-                        hasAutomaticReminderSent(
-                          session,
-                        ),
-                    }}
-                    onWhatsApp={
-                      openWhatsApp
-                    }
-                    onEmail={openEmail}
-                    onEdit={
-                      handleStartEdit
-                    }
-                    onDelete={
-                      handleDeleteSession
-                    }
-                  />
-                ),
-              )}
+              {selectedSessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={{ ...session, reminderSent: hasAutomaticReminderSent(session) }}
+                  onWhatsApp={openWhatsApp}
+                  onEmail={openEmail}
+                  onEdit={handleStartEdit}
+                  onDelete={handleDeleteSession}
+                />
+              ))}
             </div>
           </div>
         </section>
@@ -511,16 +346,10 @@ function AgendaScreen() {
       {isCreateOpen && (
         <SessionFormModal
           form={form}
-          isEditing={Boolean(
-            editingSessionId,
-          )}
+          isEditing={Boolean(editingSessionId)}
           onChange={handleChange}
           onClose={closeCreateModal}
-          onSubmit={
-            editingSessionId
-              ? handleUpdateSession
-              : handleCreateSession
-          }
+          onSubmit={editingSessionId ? handleUpdateSession : handleCreateSession}
         />
       )}
 
@@ -530,5 +359,4 @@ function AgendaScreen() {
 }
 
 export default AgendaScreen
-
 

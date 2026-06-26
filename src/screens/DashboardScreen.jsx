@@ -4,10 +4,12 @@ import Footer from '../components/Footer'
 
 import { dashboardModules } from '../data/dashboardModules'
 import { styles } from '../styles/dashboardStyles'
+import TrialBanner from '../components/TrialBanner'
 
 function DashboardScreen() {
   return (
     <main style={styles.page}>
+      <TrialBanner />
       <Topbar />
 
       <section style={styles.header}>

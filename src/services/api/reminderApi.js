@@ -1,7 +1,9 @@
+// src/services/api/reminderApi.js
 import { apiClient } from './apiClient'
 
-export function getTodayReminderItems() {
-  return apiClient.get('/reminders/today')
+export function getTodayReminderItems(date = null) {
+  const query = date ? `?date=${date}` : ''
+  return apiClient.get(`/reminders/today${query}`)
 }
 
 export async function sendReminder(payload) {
@@ -9,7 +11,6 @@ export async function sendReminder(payload) {
     '/reminders/send',
     payload,
   )
-
   return response?.data || response
 }
 

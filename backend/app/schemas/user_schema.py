@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 from pydantic import EmailStr
 
@@ -23,9 +24,9 @@ class UserResponseSchema(BaseModel):
     telefone: str | None = None
     plano: str
     trial_status: str
+    trial_expires_at: datetime | None = None
 
     class Config:
         from_attributes = True
-        
         
         

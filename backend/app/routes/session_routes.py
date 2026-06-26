@@ -28,7 +28,7 @@ router = APIRouter(
 def create_session(
     session_data: SessionCreateSchema,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_active_user)
 ):
     return create_user_session(
         db,
@@ -43,7 +43,7 @@ def create_session(
 )
 def list_sessions(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_active_user)
 ):
     return get_user_sessions(
         db,
@@ -59,7 +59,7 @@ def update_session(
     session_id: str,
     session_data: SessionUpdateSchema,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_active_user)
 ):
     return update_user_session(
         db=db,
@@ -73,7 +73,7 @@ def update_session(
 def delete_session(
     session_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_active_user)
 ):
     return delete_user_session(
         db=db,

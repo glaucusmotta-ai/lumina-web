@@ -1,3 +1,4 @@
+# backend/app/routes/reminder_routes.py
 from fastapi import APIRouter
 from fastapi import Depends
 from sqlalchemy.orm import Session
@@ -23,11 +24,13 @@ router = APIRouter(
 )
 def today(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_active_user),
+    date: str = None
 ):
     return get_today_reminders(
         db,
-        current_user.id
+        current_user.id,
+        date=date
     )
 
 
@@ -35,7 +38,7 @@ def today(
 def send(
     reminder_data: ReminderSendSchema,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_active_user)
 ):
     return send_session_reminder(
         db,
@@ -50,12 +53,11 @@ def send(
 )
 def logs(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_active_user)
 ):
     return get_reminder_logs(
         db,
         current_user.id
     )
-    
     
     

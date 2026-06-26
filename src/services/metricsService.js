@@ -1,8 +1,14 @@
+// src/services/metricsService.js
 import { getClients } from './api/clientApi'
 import { getSessions } from './api/sessionApi'
 
-const CURRENT_MONTH = '2026-06'
-const TODAY = '2026-06-16'
+function getTodayString() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function getCurrentMonthString() {
+  return new Date().toISOString().slice(0, 7)
+}
 
 function normalizeSession(session) {
   return {
@@ -16,14 +22,16 @@ function normalizeSession(session) {
 }
 
 function getCurrentMonthSessions(sessions) {
+  const currentMonth = getCurrentMonthString()
   return sessions.filter((session) =>
-    session.date?.startsWith(CURRENT_MONTH),
+    session.date?.startsWith(currentMonth),
   )
 }
 
 function getFutureSessions(sessions) {
+  const today = getTodayString()
   return sessions.filter((session) =>
-    session.date >= TODAY,
+    session.date >= today,
   )
 }
 
@@ -47,9 +55,7 @@ function getRanking(items, fieldName) {
 
 function getTopLabel(ranking) {
   if (!ranking.length) return 'Não informado'
-
   const topTotal = ranking[0].total
-
   return ranking
     .filter((item) => item.total === topTotal)
     .map((item) => item.label)
@@ -58,13 +64,10 @@ function getTopLabel(ranking) {
 
 function getPeriodFromSession(session) {
   if (!session.horario) return 'Não informado'
-
   const hour = Number(session.horario.split(':')[0])
-
   if (Number.isNaN(hour)) return 'Não informado'
   if (hour < 12) return 'Manhã'
   if (hour < 18) return 'Tarde'
-
   return 'Noite'
 }
 
@@ -74,27 +77,21 @@ function getPeriodRanking(sessions) {
     { label: 'Tarde', total: 0 },
     { label: 'Noite', total: 0 },
   ]
-
   sessions.forEach((session) => {
     const period = getPeriodFromSession(session)
-    const item = periods.find((periodItem) => periodItem.label === period)
-
+    const item = periods.find((p) => p.label === period)
     if (item) item.total += 1
   })
-
   return periods
 }
 
 function getHourRanking(sessions) {
   const totals = sessions.reduce((acc, session) => {
     if (!session.horario) return acc
-
     const hour = `${session.horario.split(':')[0]}h`
     acc[hour] = (acc[hour] || 0) + 1
-
     return acc
   }, {})
-
   return Object.entries(totals)
     .map(([label, total]) => ({ label, total }))
     .sort((a, b) => b.total - a.total)
@@ -102,11 +99,9 @@ function getHourRanking(sessions) {
 
 function getWeekNumber(date) {
   const day = Number(date.split('-')[2])
-
   if (day <= 7) return 1
   if (day <= 14) return 2
   if (day <= 21) return 3
-
   return 4
 }
 
@@ -117,43 +112,30 @@ function getWeeklyHistory(sessions) {
     { week: 'Semana 3', sessions: 0 },
     { week: 'Semana 4', sessions: 0 },
   ]
-
   sessions.forEach((session) => {
     if (!session.date) return
-
     const index = getWeekNumber(session.date) - 1
-
-    if (weeks[index]) {
-      weeks[index].sessions += 1
-    }
+    if (weeks[index]) weeks[index].sessions += 1
   })
-
   return weeks
 }
 
 function getMonthlyEvolution(sessions) {
   const totals = sessions.reduce((acc, session) => {
     if (!session.date) return acc
-
     const month = session.date.slice(0, 7)
     acc[month] = (acc[month] || 0) + 1
-
     return acc
   }, {})
-
   return Object.entries(totals)
     .map(([label, total]) => ({ label, total }))
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
-function formatSessionsText(total) {
-  return total === 1 ? '1 sessão' : `${total} sessões`
-}
-
 function getHourHelper(hourRanking) {
   if (!hourRanking.length) return 'Sem horários registrados'
-
-  return `${formatSessionsText(hourRanking[0].total)} registradas neste horário`
+  const total = hourRanking[0].total
+  return `${total === 1 ? '1 sessão' : `${total} sessões`} registradas neste horário`
 }
 
 export async function getMetricsData() {
@@ -163,7 +145,6 @@ export async function getMetricsData() {
   ])
 
   const sessions = rawSessions.map(normalizeSession)
-
   const monthSessions = getCurrentMonthSessions(sessions)
   const futureSessions = getFutureSessions(sessions)
   const confirmedSessions = getConfirmedSessions(sessions)
@@ -177,11 +158,9 @@ export async function getMetricsData() {
   const monthlyEvolution = getMonthlyEvolution(sessions)
 
   const topPeriod = getTopLabel(periodRanking)
-
   const confirmationRate = sessions.length
     ? Math.round((confirmedSessions.length / sessions.length) * 100)
     : 0
-
   const returnRate = clients.length && monthSessions.length
     ? Math.min(100, Math.round((monthSessions.length / clients.length) * 100))
     : 0
@@ -191,55 +170,19 @@ export async function getMetricsData() {
       {
         label: 'Sessões no mês',
         value: String(monthSessions.length),
-        helper: 'Total de atendimentos registrados em junho',
+        helper: `Total de atendimentos registrados em ${new Date().toLocaleDateString('pt-BR', { month: 'long' })}`,
       },
-      {
-        label: 'Clientes ativos',
-        value: String(clients.length),
-        helper: 'Clientes cadastrados no Lumina',
-      },
-      {
-        label: 'Taxa de confirmação',
-        value: `${confirmationRate}%`,
-        helper: 'Sessões confirmadas no histórico',
-      },
-      {
-        label: 'Agendamentos futuros',
-        value: String(futureSessions.length),
-        helper: 'Sessões a partir de hoje',
-      },
-      {
-        label: 'Taxa de retorno',
-        value: `${returnRate}%`,
-        helper: 'Estimativa baseada em sessões/clientes',
-      },
+      { label: 'Clientes ativos', value: String(clients.length), helper: 'Clientes cadastrados no Lumina' },
+      { label: 'Taxa de confirmação', value: `${confirmationRate}%`, helper: 'Sessões confirmadas no histórico' },
+      { label: 'Agendamentos futuros', value: String(futureSessions.length), helper: 'Sessões a partir de hoje' },
+      { label: 'Taxa de retorno', value: `${returnRate}%`, helper: 'Estimativa baseada em sessões/clientes' },
     ],
     executiveCards: [
-      {
-        label: 'Origem principal',
-        value: getTopLabel(originRanking),
-        helper: 'Canal com maior volume de clientes',
-      },
-      {
-        label: 'Região principal',
-        value: getTopLabel(regionRanking),
-        helper: 'Região com maior recorrência',
-      },
-      {
-        label: 'Local mais usado',
-        value: getTopLabel(locationRanking),
-        helper: 'Espaço preferencial dos clientes',
-      },
-      {
-        label: 'Faixa do dia mais utilizada',
-        value: topPeriod,
-        helper: 'Baseado nas sessões do mês',
-      },
-      {
-        label: 'Horário mais procurado',
-        value: getTopLabel(hourRanking),
-        helper: getHourHelper(hourRanking),
-      },
+      { label: 'Origem principal', value: getTopLabel(originRanking), helper: 'Canal com maior volume de clientes' },
+      { label: 'Região principal', value: getTopLabel(regionRanking), helper: 'Região com maior recorrência' },
+      { label: 'Local mais usado', value: getTopLabel(locationRanking), helper: 'Espaço preferencial dos clientes' },
+      { label: 'Faixa do dia mais utilizada', value: topPeriod, helper: 'Baseado nas sessões do mês' },
+      { label: 'Horário mais procurado', value: getTopLabel(hourRanking), helper: getHourHelper(hourRanking) },
     ],
     insights: [
       `Origem com maior recorrência: ${getTopLabel(originRanking)}.`,
@@ -257,5 +200,4 @@ export async function getMetricsData() {
     hourRanking,
   }
 }
-
 
