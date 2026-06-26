@@ -22,10 +22,7 @@ def register(
     user_data: UserRegisterSchema,
     db: Session = Depends(get_db)
 ):
-    return register_user(
-        db,
-        user_data
-    )
+    return register_user(db, user_data)
 
 
 @router.post("/login")
@@ -37,17 +34,11 @@ def login(
         email=form_data.username,
         password=form_data.password
     )
-
-    return login_user(
-        db,
-        login_data
-    )
+    return login_user(db, login_data)
 
 
 @router.get("/me", response_model=UserResponseSchema)
 def me(
-    current_user=Depends(get_active_user)
+    current_user=Depends(get_current_user)
 ):
     return current_user
-
-
